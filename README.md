@@ -4,7 +4,7 @@ Local webhook signing and replay for payment integration tests.
 
 HookBuoy sends synthetic Circle Wallets-shaped notifications to a local HTTP handler using a test key you control. Save a signed delivery and replay the same body bytes and signature to exercise your handler's duplicate-delivery behavior.
 
-**Status:** Initial public release (`v0.1.0`); the 0.x interface and fixture templates remain experimental. HookBuoy is an independent project and is not affiliated with Circle. Its requests are **not signed by Circle**.
+**Status:** Released v0.1.0; current development branch is a v0.2 CLI usability preview. The 0.x interface and fixture templates remain experimental. HookBuoy is an independent project and is not affiliated with Circle. Its requests are **not signed by Circle**.
 
 ## Why HookBuoy?
 
@@ -54,6 +54,25 @@ node dist/src/cli.js replay first.delivery.json \
 ```
 
 Each delivery should report `HTTP 200` and `EXPECTED`. The receiver logs one `NEW` and three `DUPLICATE` observations. It is an in-memory demonstration, not a payment handler. Stop it with Ctrl-C.
+
+## v0.2 CLI preview — fewer flags
+
+The development branch adds an optional local project configuration. Existing v0.1 commands remain supported.
+
+```sh
+# From a source checkout (after npm ci && npm run build):
+node dist/src/cli.js init --to http://127.0.0.1:3917/api/circle/webhook
+node dist/src/cli.js status
+node dist/src/cli.js events
+node dist/src/cli.js send inbound.complete
+node dist/src/cli.js replay last --times 3
+```
+
+For the pinned Arc Commerce local pilot, `init arc-commerce` uses the default `http://127.0.0.1:3000/api/circle/webhook` endpoint. It does **not** patch or start that application, create test purchases, or bypass signature verification. Explicitly configure the receiving app to trust your local public key in an isolated development environment.
+
+`init` creates `.hookbuoy/config.json` and local P-256 test keys (or reuses an existing complete pair). It never silently overwrites configuration or keys. Once configured, each `send` automatically saves a unique, immutable signed request before HTTP delivery under `.hookbuoy/deliveries/`; `replay last` sends exactly that stored request. Pass `--to` to override the saved endpoint, or `--save` to pick a delivery filename.
+
+Run `hookbuoy` in a terminal for a simple interactive command prompt. In scripts and CI, no TTY means it prints help and exits, never blocking for input. The prompt is not an AI agent and makes no external API calls.
 
 ## Use your handler
 

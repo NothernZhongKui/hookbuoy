@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -12,6 +13,7 @@ import { makeFixture } from '../src/fixtures.js';
 import { createDelivery, decodeDelivery, loadDelivery, saveDelivery } from '../src/artifact.js';
 import { deliver, deliverTimes, parseLocalUrl } from '../src/delivery.js';
 import { run } from '../src/cli.js';
+import { initProject, keyStatus, loadProject, nextDelivery, rememberDelivery } from '../src/project.js';
 
 async function harness() {
   const temp = await mkdtemp(join(tmpdir(), 'hookbuoy-test-'));
@@ -206,5 +208,119 @@ test('npm-style symlink invokes CLI', async () => {
       encoding: 'utf8'
     });
     assert.match(out, /Usage:/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+
+test('project init stores only local config and refuses to overwrite keys', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'hb-project-'));
+  try {
+    const endpoint = 'http://127.0.0.1:3901/hook';
+    assert.deepEqual(await initProject(endpoint, 'custom', dir), { reusedKeys: false });
+    const config = await loadProject(dir);
+    assert.equal(config?.endpoint, endpoint);
+    assert.equal(config?.profile, 'custom');
+    assert.equal(await keyStatus(dir), 'ready');
+    await assert.rejects(initProject(endpoint, 'custom', dir), /already initialized/);
+    assert.equal(await readFile(join(dir, '.hookbuoy', 'config.json'), 'utf8').then(x => JSON.parse(x).endpoint), endpoint);
+    assert.ok(nextDelivery(dir).endsWith('.delivery.json'));
+    assert.ok(!(await readFile(join(dir, '.hookbuoy', 'config.json'), 'utf8')).includes('PRIVATE KEY'));
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('project init reuses existing test keys and blocks incomplete pairs', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'hb-reuse-'));
+  try {
+    const key = await createTestKeys(join(dir, '.hookbuoy'));
+    const before = await readFile(key.privatePath);
+    assert.deepEqual(await initProject('http://localhost:3000/hook', 'arc-commerce', dir), { reusedKeys: true });
+    assert.deepEqual(await readFile(key.privatePath), before);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+  const bad = await mkdtemp(join(tmpdir(), 'hb-partial-'));
+  try {
+    const key = await createTestKeys(join(bad, '.hookbuoy'));
+    await rm(key.publicPath);
+    await assert.rejects(initProject('http://localhost:3000/hook', 'custom', bad), /Incomplete/);
+  } finally { await rm(bad, { recursive: true, force: true }); }
+});
+
+test('project rejects invalid, remote or oversized config', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'hb-config-'));
+  try {
+    await initProject('http://localhost:3000/hook', 'custom', dir);
+    await writeFile(join(dir, '.hookbuoy', 'config.json'),
+      JSON.stringify({ format: 'hookbuoy.project.v1', endpoint: 'https://example.com', profile: 'custom' }));
+    await assert.rejects(loadProject(dir), /loopback|localhost|http:/);
+    await writeFile(join(dir, '.hookbuoy', 'config.json'), 'X'.repeat(17000));
+    await assert.rejects(loadProject(dir), /16 KiB/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('remembered delivery remains byte-exact and still uses test key', async () => {
+  const ctx = await harness();
+  try {
+    await initProject(ctx.origin, 'custom', ctx.temp);
+    const config = await loadProject(ctx.temp);
+    assert.ok(config);
+    const { body } = await makeFixture('wallets.inbound.complete', {});
+    const key = join(ctx.temp, '.hookbuoy', 'private.pem');
+    const delivery = await createDelivery(body, key, 'wallets.inbound.complete');
+    const path = join(ctx.temp, 'delivery.json');
+    await saveDelivery(path, delivery);
+    await rememberDelivery(config!, path, ctx.temp);
+    const loadedConfig = await loadProject(ctx.temp);
+    assert.equal(loadedConfig?.lastDelivery, path);
+    const loaded = await loadDelivery(loadedConfig!.lastDelivery!);
+    assert.deepEqual(loaded.bytes, body);
+    assert.deepEqual(loaded.artifact.request.headers, delivery.request.headers);
+    assert.equal(await verifyBytes(loaded.bytes, loaded.artifact.request.headers['x-circle-signature'], join(ctx.temp, '.hookbuoy', 'public.pem')), true);
+  } finally { await ctx.close(); }
+});
+
+async function runCli(args: string[], cwd: string): Promise<{ code: number | null; stdout: string; stderr: string }> {
+  const entry = resolve('dist/src/cli.js');
+  return await new Promise((resolveResult, reject) => {
+    const child = spawn(process.execPath, [entry, ...args], { cwd, stdio: ['ignore','pipe','pipe'] });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8').on('data', chunk => stdout += chunk);
+    child.stderr.setEncoding('utf8').on('data', chunk => stderr += chunk);
+    child.once('error', reject);
+    child.once('close', code => resolveResult({ code, stdout, stderr }));
+  });
+}
+
+test('installed-style CLI init -> short send -> replay last, without losing original bytes', async () => {
+  const ctx = await harness();
+  const dir = await mkdtemp(join(tmpdir(), 'hb-dx-cli-'));
+  try {
+    let r = await runCli(['init','--to',ctx.origin], dir);
+    assert.equal(r.code, 0, r.stderr);
+    r = await runCli(['status'], dir);
+    assert.match(r.stdout, /Test keys: ready/);
+    r = await runCli(['events'], dir);
+    assert.match(r.stdout, /inbound.complete/);
+    r = await runCli(['send','inbound.complete','--key',ctx.keys.privatePath], dir);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(r.stdout, /HTTP 200/);
+    const config = await loadProject(dir);
+    assert.ok(config?.lastDelivery);
+    const first = await loadDelivery(config!.lastDelivery!);
+    r = await runCli(['replay','last','--times','3'], dir);
+    assert.equal(r.code, 0, r.stderr);
+    assert.equal(ctx.requests.length, 4);
+    for (const item of ctx.requests) {
+      assert.deepEqual(item.body, first.bytes);
+      assert.equal(item.signature, first.artifact.request.headers['x-circle-signature']);
+    }
+  } finally { await ctx.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test('without a TTY, bare CLI produces help and does not prompt', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'hb-no-tty-'));
+  try {
+    const result = await runCli([], dir);
+    assert.equal(result.code, 0);
+    assert.match(result.stdout, /Usage:/);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
