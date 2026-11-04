@@ -103,7 +103,7 @@ async function interactive(): Promise<number> {
       if (code !== 0) console.log('Exit code:', code);
     }
   } catch (e) {
-    if ((e as Error).code === 'ERR_USE_AFTER_CLOSE' || (e as Error).name === 'AbortError') return 0;
+    if ((e as NodeJS.ErrnoException).code === 'ERR_USE_AFTER_CLOSE' || (e as Error).name === 'AbortError') return 0;
     throw e;
   } finally {
     rl.close();
