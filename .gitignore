@@ -1,0 +1,29 @@
+node_modules/
+dist/
+.hookbuoy/
+*.delivery.json
+.env
+.env.*
+.DS_Store
+
+# Dependencies and build
+node_modules/
+dist/
+coverage/
+*.tgz
+
+# Local webhook testing
+.hookbuoy/
+*.delivery.json
+*.pem
+*.key
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+.npmrc
+
+# System and logs
+.DS_Store
+*.log

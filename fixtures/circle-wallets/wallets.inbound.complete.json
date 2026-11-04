@@ -1,0 +1,13 @@
+{
+  "subscriptionId": "hookbuoy-local-subscription",
+  "notificationId": "placeholder-notification-id",
+  "notificationType": "transactions.inbound",
+  "notification": {
+    "id": "placeholder-transaction-id",
+    "state": "COMPLETE",
+    "txHash": "0xabababababababababababababababababababababababababababababababab",
+    "blockchain": "ARC-TESTNET"
+  },
+  "timestamp": "2026-11-05T00:00:00.000Z",
+  "version": 2
+}

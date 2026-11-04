@@ -1,0 +1,28 @@
+{
+  "name": "hookbuoy",
+  "version": "0.1.0-dev.1",
+  "private": true,
+  "description": "Local-first Circle Wallets webhook fixture signing and exact replay (experimental)",
+  "type": "module",
+  "bin": {
+    "hookbuoy": "./dist/src/cli.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/tests/*.test.js",
+    "check": "npm run test",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3"
+  },
+  "license": "MIT",
+  "files": [
+    "dist/src/",
+    "fixtures/"
+  ]
+}
