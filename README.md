@@ -137,4 +137,4 @@ npm run smoke:package
 
 The package smoke test builds an npm tarball, installs it in a temporary isolated directory without developer dependencies, verifies the installed CLI, and exercises local signed delivery and three byte-exact replays. A green source test alone does not establish that an installed package works.
 
-See [compatibility and fixture provenance](docs/compatibility.md), the [Arc Commerce pilot](examples/arc-commerce/README.md), and [v0.1.0 release notes](docs/releases/v0.1.0.md). Licensed under [MIT](LICENSE).
+See [compatibility and fixture provenance](docs/compatibility.md), the [Arc Commerce pilot](examples/arc-commerce/README.md), the [v0.2 Arc Commerce E2E procedure](docs/arc-commerce-e2e.md) (requires a separate local test run), and [v0.1.0 release notes](docs/releases/v0.1.0.md). Licensed under [MIT](LICENSE).

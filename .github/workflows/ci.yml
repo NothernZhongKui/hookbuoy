@@ -16,3 +16,4 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm test
       - run: npm run smoke:package
+      - run: node --check scripts/arc-commerce-e2e.mjs
