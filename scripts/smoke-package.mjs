@@ -56,7 +56,7 @@ try {
   // Verify the shipped v0.2 initialization and aliases, not only the v0.1 legacy commands.
   const events = await run(cli, ['events'], { cwd: dir });
   assert.match(events, /inbound.complete/);
-  const publicKey = await readFile(join(dir, '.hookbuoy', 'public.pem'));
+  let publicKey;
 
   const seen = [];
   let rejected = 0;
@@ -87,6 +87,7 @@ try {
   });
   const endpoint = `http://127.0.0.1:${server.address().port}/api/circle/webhook`;
   await run(cli, ['init', '--to', endpoint], { cwd: dir });
+  publicKey = await readFile(join(dir, '.hookbuoy', 'public.pem'));
   const status = await run(cli, ['status'], { cwd: dir });
   assert.match(status, /Test keys: ready/);
   const sent = await run(cli, ['send', 'inbound.complete'], { cwd: dir });
