@@ -11,7 +11,9 @@ import { ensureDeliveryDir, initProject, keyStatus, loadProject, nextDelivery, r
 import { FIXTURE_NAMES } from './constants.js';
 import { applyFault, parseFault } from './faults.js';
 
-const USAGE = `HookBuoy v0.2.0 — local test webhooks (NOT Circle-signed)
+const VERSION = '0.2.1';
+
+const USAGE = `HookBuoy v${VERSION} — local test webhooks (NOT Circle-signed)
 
 Usage:
   hookbuoy                                Interactive terminal (TTY only)
@@ -24,6 +26,7 @@ Usage:
   hookbuoy check signature               Expect a rejected bad signature (HTTP 403)
   hookbuoy check body                    Expect a rejected modified signed body
   hookbuoy keygen --out .hookbuoy         Create local P-256 test keys
+  hookbuoy --version                      Show installed CLI version
 
 Legacy aliases: wallets.inbound.complete | wallets.inbound.failed
 Short aliases:  inbound.complete | inbound.failed
@@ -158,6 +161,11 @@ export async function run(argv: string[]): Promise<number> {
       return 0;
     }
     if (['--help', '-h', 'help'].includes(cmd)) { console.log(USAGE); return 0; }
+    if (['--version', '-V', 'version'].includes(cmd)) {
+      if (tail.length) throw new Error('version takes no arguments');
+      console.log(VERSION);
+      return 0;
+    }
     if (cmd === 'events') {
       if (tail.length) throw new Error('events takes no arguments');
       console.log('Available synthetic Circle Wallets scenarios:');
