@@ -27,3 +27,6 @@ coverage/
 # System and logs
 .DS_Store
 *.log
+
+# HookBuoy local project config and signed deliveries
+.hookbuoy/
