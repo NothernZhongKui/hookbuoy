@@ -45,7 +45,7 @@ Temporary keys and signed payloads are kept outside the repository and deleted a
 
 ## Evidence and scope
 
-Only a JSON report with `"result": "PASS"` from a real invocation against pinned Arc Commerce and local Supabase counts as a completed external pilot. Passing HookBuoy's normal CI and syntax checking the E2E script **does not** count.
+Only a JSON report with `"result": "PASS"` from a real invocation against pinned Arc Commerce and local Supabase counts as a completed external pilot. An author-provided local v0.2 run is now recorded in the [pilot result](pilots/arc-commerce-v0.2-local.md); the standalone test is still reproducible. Passing HookBuoy's normal CI and syntax checking the E2E script **does not** count.
 
 This is a **synthetic local integration test**, not proof of Circle network delivery or on-chain USDC settlement. HTTP results are checked alongside database state. Preserve the upstream SHA, HookBuoy commit SHA and machine-readable output for reproducibility; do not include credentials or private keys in reports.
 

@@ -11,7 +11,7 @@ import { ensureDeliveryDir, initProject, keyStatus, loadProject, nextDelivery, r
 import { FIXTURE_NAMES } from './constants.js';
 import { applyFault, parseFault } from './faults.js';
 
-const USAGE = `HookBuoy v0.2.0-dev.2 — local test webhooks (NOT Circle-signed)
+const USAGE = `HookBuoy v0.2.0 — local test webhooks (NOT Circle-signed)
 
 Usage:
   hookbuoy                                Interactive terminal (TTY only)

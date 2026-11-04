@@ -2,7 +2,7 @@
 
 ## Supported preview
 
-HookBuoy v0.1.0 (with a v0.2 development preview) is a local Node.js CLI for synthetic Circle Wallets-style notifications. It does not contact Circle or sign with a Circle key.
+HookBuoy v0.2.0 is a local Node.js CLI for synthetic Circle Wallets-style notifications. It does not contact Circle or sign with a Circle key.
 
 | Fixture alias | Synthetic `notificationType` | Synthetic `notification.state` |
 | --- | --- | --- |
@@ -23,8 +23,8 @@ HookBuoy signs the UTF-8 body with ECDSA P-256 and SHA-256. It sends the base64 
 
 A saved `hookbuoy.delivery.v1` file contains POST, base64 body bytes and the three explicit headers `content-type`, `x-circle-key-id` and `x-circle-signature`. Replay preserves those bytes and header values; transport-generated headers, a destination, a response and the private key are not saved. A saved file can include sensitive payload data.
 
-In the v0.2 development preview, `check signature` and `check body` create intentionally invalid signature requests after signing; these are negative test cases, not additional official Circle notification types. HTTP 403 is the default expected response and can be overridden. Saved fault cases preserve the actual bytes and signature sent. The receiver must explicitly resolve `hookbuoy-local-test` to the local public key in an isolated development environment. Keep normal signature verification intact; do not introduce this trust path in production. Loopback-only destinations and the local key are scope restrictions, not proof of an application's security.
+In v0.2, `check signature` and `check body` create intentionally invalid signature requests after signing; these are negative test cases, not additional official Circle notification types. HTTP 403 is the default expected response and can be overridden. Saved fault cases preserve the actual bytes and signature sent. The receiver must explicitly resolve `hookbuoy-local-test` to the local public key in an isolated development environment. Keep normal signature verification intact; do not introduce this trust path in production. Loopback-only destinations and the local key are scope restrictions, not proof of an application's security.
 
 ## External pilot
 
-At Arc Commerce commit `1a4f09d79883c15cb2fa8527a3ad210b3e01a552`, the project author reports a local signed delivery accepted by the handler and a Supabase event with `signature_valid=true`. The author also reports a matching purchase and no repeat credit after replay, but the final machine-readable verification log was not retained. These observations are not an independently reproduced acceptance record. See the [reproduction procedure](../examples/arc-commerce/README.md).
+The initial v0.1 manual pilot was reported by the author but its final machine-readable verification log was not retained. A separate **v0.2 automated local E2E run** was reported as `PASS` on 2026-11-04T22:06:28.848Z against pinned Arc Commerce `1a4f09d79883c15cb2fa8527a3ad210b3e01a552`: both negative cases returned HTTP 403 without state changes, a valid signed event completed a synthetic purchase and granted 10 test credits, and three replays yielded no extra credit. This is author-provided local evidence, not independently reproduced by the assistant and not a Circle network/on-chain settlement proof. See [pilot result](pilots/arc-commerce-v0.2-local.md) and [reproduction procedure](arc-commerce-e2e.md).
