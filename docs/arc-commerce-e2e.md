@@ -2,6 +2,8 @@
 
 HookBuoy's v0.2 negative signature cases and byte-exact replay can be tested against a **real application handler**, not just a mock receiver.
 
+For a manual alternative with SQL inspection, see the [Arc Commerce example](../examples/arc-commerce/README.md).
+
 This pilot uses Circle's **pinned Arc Commerce** app at commit [1a4f09d79883c15cb2fa8527a3ad210b3e01a552](https://github.com/circlefin/arc-commerce/tree/1a4f09d79883c15cb2fa8527a3ad210b3e01a552) and a **disposable local Supabase** stack. No real Circle notifications or on-chain payments are created.
 
 ## Prerequisites
