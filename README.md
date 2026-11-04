@@ -4,7 +4,7 @@ Local webhook signing and replay for payment integration tests.
 
 HookBuoy sends synthetic Circle Wallets-shaped notifications to a local HTTP handler using a test key you control. Save a signed delivery and replay the same body bytes and signature to exercise your handler's duplicate-delivery behavior.
 
-**Status:** Released v0.1.0; current development branch is a v0.2 CLI usability preview. The 0.x interface and fixture templates remain experimental. HookBuoy is an independent project and is not affiliated with Circle. Its requests are **not signed by Circle**.
+**Status:** HookBuoy v0.2.0. The 0.x interface and fixture templates remain experimental. HookBuoy is an independent project and is not affiliated with Circle. Its requests are **not signed by Circle**.
 
 ## Why HookBuoy?
 
@@ -55,9 +55,9 @@ node dist/src/cli.js replay first.delivery.json \
 
 Each delivery should report `HTTP 200` and `EXPECTED`. The receiver logs one `NEW` and three `DUPLICATE` observations. It is an in-memory demonstration, not a payment handler. Stop it with Ctrl-C.
 
-## v0.2 CLI preview — fewer flags
+## v0.2 — fewer flags
 
-The development preview adds an optional local project configuration, a concise numbered terminal menu and negative-signature checks. Existing v0.1 commands remain supported.
+v0.2 adds an optional local project configuration, a concise numbered terminal menu and negative-signature checks. Existing v0.1 commands remain supported.
 
 ```sh
 # From a source checkout (after npm ci && npm run build):
@@ -137,4 +137,4 @@ npm run smoke:package
 
 The package smoke test builds an npm tarball, installs it in a temporary isolated directory without developer dependencies, verifies the installed CLI, and exercises local signed delivery and three byte-exact replays. A green source test alone does not establish that an installed package works.
 
-See [compatibility and fixture provenance](docs/compatibility.md), the [Arc Commerce pilot](examples/arc-commerce/README.md), the [v0.2 Arc Commerce E2E procedure](docs/arc-commerce-e2e.md) (requires a separate local test run), and [v0.1.0 release notes](docs/releases/v0.1.0.md). Licensed under [MIT](LICENSE).
+See [compatibility and fixture provenance](docs/compatibility.md), the [Arc Commerce pilot](examples/arc-commerce/README.md), the [v0.2 Arc Commerce E2E procedure](docs/arc-commerce-e2e.md), the [v0.2 local pilot result](docs/pilots/arc-commerce-v0.2-local.md), and [v0.2 release notes](docs/releases/v0.2.0.md). Licensed under [MIT](LICENSE).
