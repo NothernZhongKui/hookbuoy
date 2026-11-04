@@ -23,6 +23,8 @@ cd hookbuoy-demo
 hookbuoy init --to http://127.0.0.1:3917/api/circle/webhook
 ```
 
+If you run HookBuoy inside a Git repository, add `.hookbuoy/` to that repository's `.gitignore` **before committing**. This directory contains private test keys and saved deliveries; HookBuoy does not modify your `.gitignore` automatically.
+
 Start the receiver included in the npm package in this terminal:
 
 ```sh
