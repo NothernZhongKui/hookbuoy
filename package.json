@@ -1,7 +1,6 @@
 {
   "name": "hookbuoy",
   "version": "0.1.0-dev.1",
-  "private": true,
   "description": "Local-first Circle Wallets webhook fixture signing and exact replay (experimental)",
   "type": "module",
   "bin": {
@@ -14,7 +13,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/tests/*.test.js",
     "check": "npm run test",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "smoke:package": "node scripts/smoke-package.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
@@ -23,6 +23,16 @@
   "license": "MIT",
   "files": [
     "dist/src/",
-    "fixtures/"
-  ]
+    "fixtures/",
+    "examples/",
+    "docs/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NothernZhongKui/hookbuoy.git"
+  },
+  "homepage": "https://github.com/NothernZhongKui/hookbuoy#readme",
+  "bugs": {
+    "url": "https://github.com/NothernZhongKui/hookbuoy/issues"
+  }
 }

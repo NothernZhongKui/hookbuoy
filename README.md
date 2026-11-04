@@ -21,7 +21,7 @@ npm ci
 npm run build
 ```
 
-While the repository is private, use a GitHub account with access and an authenticated clone URL if needed. The commands below run the built CLI from this checkout. To inspect all options:
+The commands below run the built CLI from this checkout. The npm package is prepared for a future release but is **not yet published**; do not use `npm install hookbuoy` until an npm release is announced. To inspect all options:
 
 ```sh
 node dist/src/cli.js --help
@@ -76,7 +76,7 @@ node dist/src/cli.js send wallets.inbound.complete \
 
 Replace the hash with the value in your test database. IDs can also be omitted to generate UUIDs. The example receiver does not use a database.
 
-`--save` creates a new delivery file **before** the HTTP attempt and refuses to overwrite an existing file. It stores the original body as base64 plus the content type, local key ID and signature; it does not store the private key or destination. `replay` sends the stored body and those headers sequentially without re-signing. The file may contain sensitive test payload data; keep it private.
+`--save` creates a new delivery file **before** the HTTP attempt and refuses to overwrite an existing file. The file remains available even if the HTTP delivery fails. It stores the original body as base64 plus the content type, local key ID and signature; it does not store the private key or destination. `replay` sends the stored body and those headers sequentially without re-signing. The file may contain sensitive test payload data; keep it private.
 
 ## HTTP results
 
@@ -101,6 +101,9 @@ HookBuoy does not create payments, fetch Circle keys, send to remote endpoints, 
 
 ```sh
 npm test
+npm run smoke:package
 ```
+
+The package smoke test builds an npm tarball, installs it in a temporary isolated directory without developer dependencies, verifies the installed CLI, and exercises local signed delivery and three byte-exact replays. A green source test alone does not establish that an installed package works.
 
 See [compatibility and fixture provenance](docs/compatibility.md) and the [Arc Commerce pilot](examples/arc-commerce/README.md). Licensed under [MIT](LICENSE).
