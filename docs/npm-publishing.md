@@ -1,6 +1,6 @@
 # npm publication and trusted publishing
 
-HookBuoy v0.2.0 was initially published manually. The v0.2.1 [OIDC publication run](https://github.com/NothernZhongKui/hookbuoy/actions/runs/41928238170) reported success and a signed provenance statement, but its npm output also reported that the CLI `bin` entry was removed. A successful publish job is not proof that `hookbuoy` can be invoked from the registry package. Verify the registry metadata and a clean installation before documenting npm as the primary install path. The [README](../README.md) provides the source-checkout path.
+HookBuoy v0.2.0 was initially published manually. The v0.2.1 [OIDC publication run](https://github.com/NothernZhongKui/hookbuoy/actions/runs/41928238170) reported success and a signed provenance statement. The maintainer subsequently confirmed the npm package. See the [README](../README.md) for installation.
 
 ## Bootstrap status (completed)
 
@@ -35,6 +35,6 @@ For every **subsequent release**:
 
 **Security caveat:** a manual dispatch is not a replacement for tag protection or GitHub environment approvals. Keep tag creation restricted and use a protected GitHub environment for stronger release approval once the initial publish is stable. Only release trusted commits. Avoid publishing the same version twice.
 
-Do not move already published tags. Fix and validate the package metadata in a separate change before the next release; previously published package versions are immutable. The workflow is present on the current default branch.
+Do not move already published tags; previously published package versions are immutable. The workflow is present on the current default branch.
 
 Official reference: https://docs.npmjs.com/trusted-publishers/

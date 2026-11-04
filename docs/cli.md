@@ -1,13 +1,13 @@
 # CLI guide
 
-This guide applies to the v0.2.1 source checkout. Examples use `node dist/src/cli.js` from the project root after `npm ci && npm run build`.
+This guide applies to HookBuoy v0.2.1 installed with npm. Run commands from the directory initialized by `hookbuoy init`. To use a source checkout instead, run `npm ci && npm run build` and substitute `node dist/src/cli.js` for `hookbuoy`.
 
 ## Initialize
 
 ```sh
-node dist/src/cli.js init --to http://127.0.0.1:3917/api/circle/webhook
-node dist/src/cli.js status
-node dist/src/cli.js events
+hookbuoy init --to http://127.0.0.1:3917/api/circle/webhook
+hookbuoy status
+hookbuoy events
 ```
 
 `init` writes `.hookbuoy/config.json` and creates a local P-256 test key pair, or reuses an existing complete pair. It refuses an existing configuration or an incomplete pair; it does not establish that existing keys match. `init arc-commerce` selects `http://127.0.0.1:3000/api/circle/webhook`; it does not start or configure that application.
@@ -17,8 +17,8 @@ Use `keygen --out DIR` for a standalone pair. The default signing key is `.hookb
 ## Send and replay
 
 ```sh
-node dist/src/cli.js send inbound.complete
-node dist/src/cli.js replay last --times 3
+hookbuoy send inbound.complete
+hookbuoy replay last --times 3
 ```
 
 A configured send saves a uniquely named delivery in `.hookbuoy/deliveries/` **before** attempting HTTP, even if the delivery fails. `--save FILE` selects a path and refuses to overwrite it. The project remembers the most recently saved delivery; `replay last` reads it. `replay FILE --to URL` also works without project initialization.
@@ -30,8 +30,8 @@ The saved file contains the original body bytes and the explicit content type, k
 ## Negative checks
 
 ```sh
-node dist/src/cli.js check signature
-node dist/src/cli.js check body
+hookbuoy check signature
+hookbuoy check body
 ```
 
 These send intentionally invalid signatures. The first changes the signature; the second changes the signed body while retaining its signature. Both expect HTTP 403 by default; pass `--expect-status N` if your receiver uses another status. The equivalent `send inbound.complete --fault signature|body` accepts the normal send options.
@@ -49,4 +49,4 @@ In an initialized project, these checks also save their faulted delivery and upd
 
 By default any 2xx is expected; `--expect-status N` requires one exact status. `--timeout-ms` defaults to 3000 and accepts 1–60000. `--times` defaults to 1 and accepts 1–100. Deliveries use HTTP on `localhost`, `127.0.0.1` or `[::1]`; redirects are not followed. An expected HTTP response does not establish correct payment processing.
 
-Run `node dist/src/cli.js --help` for all options. With no arguments the CLI opens a numbered menu when both input and output are terminals; otherwise it prints help and exits. The menu is not a shell.
+Run `hookbuoy --help` for all options. With no arguments the CLI opens a numbered menu when both input and output are terminals; otherwise it prints help and exits. The menu is not a shell.

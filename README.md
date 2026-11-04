@@ -8,37 +8,34 @@ HookBuoy sends synthetic Circle Wallets-shaped notifications to a local HTTP han
 
 ## Quickstart
 
-Requirements: Node.js 22+, npm and Git. Build from a source checkout:
+Requires Node.js 22+ and npm. Install HookBuoy:
 
 ```sh
-git clone https://github.com/NothernZhongKui/hookbuoy.git
-cd hookbuoy
-npm ci
-npm run build
-node dist/src/cli.js --version
+npm install --global hookbuoy@0.2.1
+hookbuoy --version
 ```
 
-The v0.2.1 npm publication reported success, but its publish log also reported removal of the CLI `bin` entry. Until the installed registry package is verified, use the source checkout above. See [npm publishing](docs/npm-publishing.md).
-
-Initialize a local project and generate a dedicated test key pair:
+Create a local project and a dedicated test key pair:
 
 ```sh
-node dist/src/cli.js init --to http://127.0.0.1:3917/api/circle/webhook
+mkdir hookbuoy-demo
+cd hookbuoy-demo
+hookbuoy init --to http://127.0.0.1:3917/api/circle/webhook
 ```
 
-Start the included receiver in this terminal:
+Start the receiver included in the npm package in this terminal:
 
 ```sh
-node examples/local-receiver.mjs .hookbuoy/public.pem
+node "$(npm root --global)/hookbuoy/examples/local-receiver.mjs" .hookbuoy/public.pem
 ```
 
-From the **same checkout** in another terminal:
+From the **same project directory** in another terminal:
 
 ```sh
-node dist/src/cli.js send inbound.complete
-node dist/src/cli.js replay last --times 3
-node dist/src/cli.js check signature
-node dist/src/cli.js check body
+hookbuoy send inbound.complete
+hookbuoy replay last --times 3
+hookbuoy check signature
+hookbuoy check body
 ```
 
 The send and replays should return HTTP 200; the two negative checks should return HTTP 403. The receiver logs one `NEW` and three `DUPLICATE` events. It is an in-memory demonstration, not a payment handler.
@@ -54,6 +51,15 @@ Point `init --to` or `send --to` at your handler. HookBuoy accepts HTTP loopback
 The available fixtures are `inbound.complete` and `inbound.failed`; the original `wallets.inbound.*` aliases also work. See [compatibility](docs/compatibility.md) for fixture shape and trust limits.
 
 A successful HTTP response does not prove that a payment was matched, credited once or settled on-chain. The [Arc Commerce guide](docs/arc-commerce-e2e.md) describes a reproducible local integration; the [pilot result](docs/pilots/arc-commerce-v0.2-local.md) records an author-reported run.
+
+## Development
+
+```sh
+git clone https://github.com/NothernZhongKui/hookbuoy.git
+cd hookbuoy
+npm ci
+npm test
+```
 
 ## Security
 
