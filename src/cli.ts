@@ -9,6 +9,7 @@ import { isFixtureName, makeFixture } from './fixtures.js';
 import { deliverTimes, parseLocalUrl } from './delivery.js';
 import { ensureDeliveryDir, initProject, keyStatus, loadProject, nextDelivery, rememberDelivery, type Profile } from './project.js';
 import { FIXTURE_NAMES } from './constants.js';
+import { applyFault, parseFault } from './faults.js';
 
 const USAGE = `HookBuoy v0.2.0-dev.1 — local test webhooks (NOT Circle-signed)
 
@@ -20,15 +21,18 @@ Usage:
   hookbuoy events                         List supported synthetic scenarios
   hookbuoy send inbound.complete          Send with configured endpoint and auto-save
   hookbuoy replay last --times 3          Replay last stored request exactly
+  hookbuoy check signature               Expect a rejected bad signature (HTTP 403)
+  hookbuoy check body                    Expect a rejected modified signed body
   hookbuoy keygen --out .hookbuoy         Create local P-256 test keys
 
 Legacy aliases: wallets.inbound.complete | wallets.inbound.failed
 Short aliases:  inbound.complete | inbound.failed
 
 Send: --to URL --key FILE --tx-hash 0x... --transaction-id ID
-      --notification-id ID --save FILE
+      --notification-id ID --save FILE --fault signature|body
 Replay: --to URL --times N (1..100)
 Shared: --timeout-ms N (1..60000) --expect-status N
+Faults default to expected HTTP 403; override with --expect-status for other handlers.
 
 Config: .hookbuoy/config.json, local-only; endpoints must use HTTP loopback.
 Save:  configured sends automatically create immutable .hookbuoy/deliveries/*.delivery.json
@@ -79,28 +83,63 @@ function fixtureAlias(name: string): (typeof FIXTURE_NAMES)[number] | undefined 
   return FIXTURE_NAMES.find(x => x === full);
 }
 
+export function menuCommand(line: string): string[] | 'quit' | null {
+  const text = line.trim();
+  if (!text) return null;
+  if (text === '0' || text === '/quit' || text === '/exit' || text === 'quit' || text === 'exit') return 'quit';
+  const shortcuts: Record<string, string[]> = {
+    '1': ['send', 'inbound.complete'],
+    '2': ['replay', 'last'],
+    '3': ['check', 'signature'],
+    '4': ['events'],
+    '5': ['status'],
+    '6': ['init'],
+    '7': ['--help'],
+  };
+  if (shortcuts[text]) return shortcuts[text];
+  const input = text.startsWith('/') ? text.slice(1) : text;
+  // Only known CLI commands are evaluated. This is NOT a shell or a free-text agent.
+  return input.split(/\s+/);
+}
+
 async function interactive(): Promise<number> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    console.log('HookBuoy • local webhook development');
-    console.log('Commands: /init, /status, /events, /send, /replay, /help, /quit');
+    console.log('\n  HookBuoy  •  Local webhook development\n');
     while (true) {
-      const line = (await rl.question('hookbuoy > ')).trim();
-      if (!line) continue;
-      if (line === '/quit' || line === '/exit') return 0;
-      if (line === '/help') { console.log(USAGE); continue; }
-      const parts = line.split(/\s+/);
-      if (parts[0]?.startsWith('/')) parts[0] = parts[0].slice(1);
+      const project = await loadProject();
+      console.log('  ' + (project ? project.profile + '  |  ' + project.endpoint : 'Not configured • choose 6 to initialize'));
+      console.log('  ─────────────────────────────────────────────');
+      console.log('  1  Send COMPLETE webhook');
+      console.log('  2  Replay last delivery');
+      console.log('  3  Test invalid signature (expect 403)');
+      console.log('  4  Browse events');
+      console.log('  5  Project status');
+      console.log('  6  Initialize project');
+      console.log('  7  Help                  0  Exit');
+      const line = (await rl.question('\n  › ')).trim();
+      const chosen = menuCommand(line);
+      if (chosen === 'quit') return 0;
+      if (!chosen) continue;
+      const parts = [...chosen];
       if (parts[0] === 'send' && parts.length === 1) {
-        parts.push('inbound.complete');
+        const answer = (await rl.question('  Event [complete/failed] (complete): ')).trim();
+        parts.push(answer === 'failed' ? 'inbound.failed' : 'inbound.complete');
       }
       if (parts[0] === 'replay' && parts.length === 1) parts.push('last');
       if (parts[0] === 'init' && parts.length === 1) {
-        const endpoint = (await rl.question('Local HTTP endpoint: ')).trim();
-        if (endpoint) parts.push('--to', endpoint);
+        const profile = (await rl.question('  Profile [custom/arc-commerce] (arc-commerce): ')).trim();
+        if (profile === 'custom') {
+          const endpoint = (await rl.question('  Local HTTP endpoint: ')).trim();
+          if (!endpoint) { console.log('  No endpoint supplied.'); continue; }
+          parts.push('--to', endpoint);
+        } else if (!profile || profile === 'arc-commerce') parts.push('arc-commerce');
+        else { console.log('  Unknown profile.'); continue; }
       }
+      console.log();
       const code = await run(parts);
-      if (code !== 0) console.log('Exit code:', code);
+      if (code !== 0) console.log('  Exit code: ' + code);
+      console.log();
     }
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'ERR_USE_AFTER_CLOSE' || (e as Error).name === 'AbortError') return 0;
@@ -151,6 +190,12 @@ export async function run(argv: string[]): Promise<number> {
       console.log('Configure the receiver to trust .hookbuoy/public.pem ONLY in an isolated test environment.');
       return 0;
     }
+    if (cmd === 'check') {
+      const kind = tail[0] && !tail[0].startsWith('--') ? tail[0] : 'signature';
+      if (kind !== 'signature' && kind !== 'body') throw new Error('check accepts signature or body');
+      const rest = tail[0] === kind ? tail.slice(1) : tail;
+      return run(['send', 'inbound.complete', '--fault', kind, ...rest]);
+    }
     if (cmd === 'keygen') {
       const { pos, opts } = parseArgs(tail, ['--out']);
       if (pos.length !== 0) throw new Error('keygen takes no positional arguments');
@@ -161,7 +206,7 @@ export async function run(argv: string[]): Promise<number> {
       return 0;
     }
     if (cmd === 'send') {
-      const { pos, opts } = parseArgs(tail, ['--key','--tx-hash','--transaction-id','--notification-id','--save','--to','--timeout-ms','--expect-status']);
+      const { pos, opts } = parseArgs(tail, ['--key','--tx-hash','--transaction-id','--notification-id','--save','--to','--timeout-ms','--expect-status','--fault']);
       const fixture = pos.length === 1 ? fixtureAlias(pos[0]!) : undefined;
       if (!fixture) throw new Error('Choose a fixture: inbound.complete | inbound.failed (run hookbuoy events)');
       const project = await loadProject();
@@ -169,11 +214,13 @@ export async function run(argv: string[]): Promise<number> {
       if (!endpoint) throw new Error('Missing --to URL (or run hookbuoy init)');
       parseLocalUrl(endpoint);
       const ms = positiveInteger(opts['--timeout-ms'],3000,'--timeout-ms',60000);
-      const expect = expectedStatus(opts['--expect-status']);
+      const fault = opts['--fault'] ? parseFault(opts['--fault']) : undefined;
+      const expect = expectedStatus(opts['--expect-status'] ?? (fault ? '403' : undefined));
       const { body, usesFakeHash } = await makeFixture(fixture, {
         txHash: opts['--tx-hash'], transactionId: opts['--transaction-id'], notificationId: opts['--notification-id'],
       });
-      const artifact = await createDelivery(body, opts['--key'] ?? '.hookbuoy/private.pem', fixture);
+      const signed = await createDelivery(body, opts['--key'] ?? '.hookbuoy/private.pem', fixture);
+      const artifact = fault ? applyFault(signed, fault) : signed;
       const savePath = opts['--save'] ?? (project ? nextDelivery() : undefined);
       if (savePath) {
         if (project && !opts['--save']) await ensureDeliveryDir();
@@ -181,7 +228,9 @@ export async function run(argv: string[]): Promise<number> {
         if (project) await rememberDelivery(project, savePath);
         console.log('Saved exact signed request: ' + resolve(savePath));
       }
-      console.log('Signature: LOCAL TEST P-256, NOT authenticated by Circle.');
+      console.log(fault
+        ? 'Fault: ' + fault + ' (intentionally invalid signature; HTTP result only).'
+        : 'Signature: LOCAL TEST P-256, NOT authenticated by Circle.');
       if (usesFakeHash) console.warn('Warning: synthetic txHash. For app side effects, set --tx-hash to an EXISTING local test purchase.');
       const report = await deliverTimes(artifact, endpoint, 1, ms, expect);
       present(report, endpoint, expect);

@@ -57,7 +57,7 @@ Each delivery should report `HTTP 200` and `EXPECTED`. The receiver logs one `NE
 
 ## v0.2 CLI preview — fewer flags
 
-The development branch adds an optional local project configuration. Existing v0.1 commands remain supported.
+The development preview adds an optional local project configuration, a concise numbered terminal menu and negative-signature checks. Existing v0.1 commands remain supported.
 
 ```sh
 # From a source checkout (after npm ci && npm run build):
@@ -72,7 +72,19 @@ For the pinned Arc Commerce local pilot, `init arc-commerce` uses the default `h
 
 `init` creates `.hookbuoy/config.json` and local P-256 test keys (or reuses an existing complete pair). It never silently overwrites configuration or keys. Once configured, each `send` automatically saves a unique, immutable signed request before HTTP delivery under `.hookbuoy/deliveries/`; `replay last` sends exactly that stored request. Pass `--to` to override the saved endpoint, or `--save` to pick a delivery filename.
 
-Run `hookbuoy` in a terminal for a simple interactive command prompt. In scripts and CI, no TTY means it prints help and exits, never blocking for input. The prompt is not an AI agent and makes no external API calls.
+Run `hookbuoy` in a terminal for a numbered menu: **1** send, **2** replay last, **3** check invalid signature, **4** browse events, **5** status, **6** initialize and **0** exit. Slash commands like `/events` still work. In scripts and CI, no TTY means it prints help and exits, never blocking for input. This is not an AI agent and makes no external API calls.
+
+### Negative-signature tests
+
+Use a locally configured project and running test receiver that checks signatures:
+
+```sh
+node dist/src/cli.js check signature           # send invalid signature, expect HTTP 403
+node dist/src/cli.js check body                # modify signed JSON body, expect HTTP 403
+node dist/src/cli.js send inbound.complete --fault signature --expect-status 403
+```
+
+Faults are applied **after signing**, never to the original request object. `signature` flips a bit in the signature while keeping the original body; `body` changes the synthetic `notification.state` while retaining its original signature. Both default to expecting HTTP 403 (override `--expect-status` if your handler rejects with a different status). Exit code 0 means the expected HTTP response was observed, **not** that downstream payment state was audited. When a project is configured, faulted requests are also stored under immutable filenames; `replay last` reproduces the exact faulted request. No Circle-managed keys or remote endpoints are involved.
 
 ## Use your handler
 

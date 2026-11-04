@@ -2,7 +2,7 @@
 
 ## Supported preview
 
-HookBuoy `v0.1.0` is a local Node.js CLI for synthetic Circle Wallets-style notifications. It does not contact Circle or sign with a Circle key.
+HookBuoy v0.1.0 (with a v0.2 development preview) is a local Node.js CLI for synthetic Circle Wallets-style notifications. It does not contact Circle or sign with a Circle key.
 
 | Fixture alias | Synthetic `notificationType` | Synthetic `notification.state` |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ HookBuoy signs the UTF-8 body with ECDSA P-256 and SHA-256. It sends the base64 
 
 A saved `hookbuoy.delivery.v1` file contains POST, base64 body bytes and the three explicit headers `content-type`, `x-circle-key-id` and `x-circle-signature`. Replay preserves those bytes and header values; transport-generated headers, a destination, a response and the private key are not saved. A saved file can include sensitive payload data.
 
-The receiver must explicitly resolve `hookbuoy-local-test` to the local public key in an isolated development environment. Keep normal signature verification intact; do not introduce this trust path in production. Loopback-only destinations and the local key are scope restrictions, not proof of an application's security.
+In the v0.2 development preview, `check signature` and `check body` create intentionally invalid signature requests after signing; these are negative test cases, not additional official Circle notification types. HTTP 403 is the default expected response and can be overridden. Saved fault cases preserve the actual bytes and signature sent. The receiver must explicitly resolve `hookbuoy-local-test` to the local public key in an isolated development environment. Keep normal signature verification intact; do not introduce this trust path in production. Loopback-only destinations and the local key are scope restrictions, not proof of an application's security.
 
 ## External pilot
 
