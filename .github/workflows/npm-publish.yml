@@ -1,0 +1,62 @@
+name: Publish to npm (manual OIDC)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing published GitHub Release tag, e.g. v0.3.0'
+        type: string
+        required: true
+      confirm_publish:
+        description: 'I have configured npm Trusted Publishing and intend to publish to npm'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: inputs.confirm_publish == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout requested release tag
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+      - name: Set up Node 24 for npm OIDC
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+      - name: Verify release tag, ancestry and package identity
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || exit 1
+          git tag --points-at HEAD | grep -Fxq "$RELEASE_TAG"
+          git fetch origin main --quiet
+          git merge-base --is-ancestor HEAD origin/main
+          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq '(.isDraft == false) and (.isPrerelease == false)' | grep -qx true
+          node --input-type=module -e 'import p from "./package.json" with { type: "json" }; const tag=process.env.RELEASE_TAG; if (p.name!=="hookbuoy" || p.version!==tag.slice(1) || p.private===true || p.repository?.url!=="git+https://github.com/NothernZhongKui/hookbuoy.git") process.exit(1)'
+      - name: Update npm CLI for trusted publishing
+        run: npm install --global npm@11
+      - name: Install, test and validate actual package
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run smoke:package
+      - name: Publish public package via npm OIDC (provenance automatic)
+        run: npm publish --access public
