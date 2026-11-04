@@ -12,7 +12,8 @@ import { createTestKeys, verifyBytes } from '../src/keys.js';
 import { makeFixture } from '../src/fixtures.js';
 import { createDelivery, decodeDelivery, loadDelivery, saveDelivery } from '../src/artifact.js';
 import { deliver, deliverTimes, parseLocalUrl } from '../src/delivery.js';
-import { run } from '../src/cli.js';
+import { run, menuCommand } from '../src/cli.js';
+import { applyFault, parseFault } from '../src/faults.js';
 import { initProject, keyStatus, loadProject, nextDelivery, rememberDelivery } from '../src/project.js';
 
 async function harness() {
@@ -323,4 +324,95 @@ test('without a TTY, bare CLI produces help and does not prompt', async () => {
     assert.equal(result.code, 0);
     assert.match(result.stdout, /Usage:/);
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+
+test('fault parsing is explicit and rejects unsupported values', () => {
+  assert.equal(parseFault('signature'), 'signature');
+  assert.equal(parseFault('invalid-signature'), 'signature');
+  assert.equal(parseFault('body'), 'body');
+  assert.equal(parseFault('tampered-body'), 'body');
+  assert.throws(() => parseFault('unknown-key'), /Unknown fault/);
+});
+
+test('signature fault invalidates verification without changing signed body', async () => {
+  const ctx = await harness();
+  try {
+    const { body } = await makeFixture('wallets.inbound.complete', {});
+    const signed = await createDelivery(body, ctx.keys.privatePath, 'wallets.inbound.complete');
+    const original = JSON.stringify(signed);
+    const mutated = applyFault(signed, 'signature');
+    assert.equal(JSON.stringify(signed), original, 'source artifact must remain unchanged');
+    assert.equal(mutated.request.bodyBase64, signed.request.bodyBase64);
+    assert.notEqual(mutated.request.headers['x-circle-signature'], signed.request.headers['x-circle-signature']);
+    assert.equal(await verifyBytes(body, signed.request.headers['x-circle-signature'], ctx.keys.publicPath), true);
+    assert.equal(await verifyBytes(body, mutated.request.headers['x-circle-signature'], ctx.keys.publicPath), false);
+    const r = await deliverTimes(mutated, ctx.origin, 1, 1000, 403);
+    assert.equal(r.exitCode, 0);
+    assert.equal(r.results[0]!.status, 403);
+  } finally { await ctx.close(); }
+});
+
+test('body fault keeps valid JSON, original signature, and produces HTTP 403', async () => {
+  const ctx = await harness();
+  try {
+    const { body } = await makeFixture('wallets.inbound.complete', {});
+    const signed = await createDelivery(body, ctx.keys.privatePath, 'wallets.inbound.complete');
+    const original = JSON.stringify(signed);
+    const mutated = applyFault(signed, 'body');
+    assert.equal(JSON.stringify(signed), original);
+    assert.equal(mutated.request.headers['x-circle-signature'], signed.request.headers['x-circle-signature']);
+    const changed = Buffer.from(mutated.request.bodyBase64, 'base64');
+    assert.equal(JSON.parse(changed.toString('utf8')).notification.state, 'FAILED');
+    assert.equal(await verifyBytes(changed, mutated.request.headers['x-circle-signature'], ctx.keys.publicPath), false);
+    const r = await deliverTimes(mutated, ctx.origin, 1, 1000, 403);
+    assert.equal(r.exitCode, 0);
+    assert.equal(r.results[0]!.status, 403);
+  } finally { await ctx.close(); }
+});
+
+test('menu accepts numbered choices and slash commands without shell evaluation', () => {
+  assert.deepEqual(menuCommand('1'), ['send','inbound.complete']);
+  assert.deepEqual(menuCommand('2'), ['replay','last']);
+  assert.deepEqual(menuCommand('3'), ['check','signature']);
+  assert.deepEqual(menuCommand('/events'), ['events']);
+  assert.deepEqual(menuCommand('6'), ['init']);
+  assert.equal(menuCommand('0'), 'quit');
+  assert.equal(menuCommand(' '), null);
+});
+
+test('CLI check signature and check body produce an expected HTTP 403', async () => {
+  const ctx = await harness();
+  const dir = await mkdtemp(join(tmpdir(), 'hb-fault-cli-'));
+  try {
+    let r = await runCli(['init','--to',ctx.origin], dir);
+    assert.equal(r.code, 0, r.stderr);
+    for (const kind of ['signature', 'body']) {
+      r = await runCli(['check',kind], dir);
+      assert.equal(r.code, 0, r.stderr);
+      assert.match(r.stdout, /HTTP 403/);
+      assert.match(r.stdout, /EXPECTED/);
+    }
+    assert.equal(ctx.requests.length, 2);
+    const config = await loadProject(dir);
+    assert.ok(config?.lastDelivery);
+    const saved = await loadDelivery(config!.lastDelivery!);
+    assert.equal(await verifyBytes(saved.bytes, saved.artifact.request.headers['x-circle-signature'], join(dir,'.hookbuoy','public.pem')), false);
+    r = await runCli(['replay','last','--expect-status','403'], dir);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(r.stdout, /HTTP 403/);
+    assert.equal(ctx.requests.length, 3);
+  } finally { await ctx.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test('negative scenario with wrong expected status exits 3', async () => {
+  const ctx = await harness();
+  const dir = await mkdtemp(join(tmpdir(), 'hb-fault-status-'));
+  try {
+    let r = await runCli(['init','--to',ctx.origin], dir);
+    assert.equal(r.code, 0);
+    r = await runCli(['send','inbound.complete','--fault','signature','--expect-status','200'], dir);
+    assert.equal(r.code, 3);
+    assert.match(r.stdout, /HTTP 403/);
+  } finally { await ctx.close(); await rm(dir, { recursive: true, force: true }); }
 });
