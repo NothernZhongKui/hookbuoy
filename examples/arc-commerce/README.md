@@ -1,8 +1,8 @@
 # Arc Commerce local pilot
 
-This procedure exercises HookBuoy against the original webhook handler in [Circle's Arc Commerce sample](https://github.com/circlefin/arc-commerce) at commit `1a4f09d79883c15cb2fa8527a3ad210b3e01a552`, with one local-only change to public-key lookup. It does not send a real Circle notification or modify the upstream repository.
+This procedure exercises HookBuoy against the original webhook handler in [Circle's Arc Commerce sample](https://github.com/circlefin/arc-commerce) at commit `1a4f09d79883c15cb2fa8527a3ad210b3e01a552`, with a development-only change to public-key lookup in the local checkout. It does not send a real Circle notification or require changes to Circle's upstream repository.
 
-**Prior observation:** the project author reports that a locally signed delivery received HTTP 200 and was recorded in Supabase with `signature_valid=true`. The author also reports a test purchase was credited once after replay. The final machine-readable settlement and replay log was not retained; repeat and record the checks below before treating those outcomes as independently reproduced.
+**Prior observation:** the project author reports that a locally signed delivery received HTTP 200 and was recorded in Supabase with `signature_valid=true`. The author also reports that a test purchase was credited once on the initial send, with no additional credit on replay. The final machine-readable settlement and replay log was not retained; repeat and record the checks below before treating those outcomes as independently reproduced.
 
 ## Requirements
 
@@ -50,10 +50,10 @@ if (
 
 Leave the original Circle key lookup and signature-verification code in place for all other key IDs. Set `HOOKBUOY_TEST_PUBLIC_KEY_PATH` in `.env.local` to the **absolute path** of the HookBuoy checkout's `.hookbuoy/public.pem`; restart the app after changing environment variables.
 
-This seam grants trust to your test key only in a local development copy. Do not deploy or ship it. If you cannot isolate the app and database, stop rather than changing a live handler.
+This seam accepts the test key whenever `NODE_ENV=development` and the path is set. `NODE_ENV` alone does **not** guarantee network isolation: keep the application on a loopback interface, use only a disposable local database and do not expose port 3000 through a tunnel, proxy, LAN or container port mapping. Never deploy or ship this trust seam.
 
 ```sh
-npm run dev
+npm run dev -- --hostname 127.0.0.1
 ```
 
 The endpoint is `http://127.0.0.1:3000/api/circle/webhook`.
@@ -62,7 +62,7 @@ The endpoint is `http://127.0.0.1:3000/api/circle/webhook`.
 
 In local Supabase, create a **non-admin** test user through the app or local Auth tooling. Note its UUID. The signup trigger creates a `credits` row; the admin email is excluded from credit grants.
 
-In local Supabase Studio's SQL editor, replace `<TEST_USER_UUID>` with that UUID. Use a new test database or change the hash and idempotency key for each run:
+In local Supabase Studio's SQL editor, replace `<TEST_USER_UUID>` with that UUID. The constants below describe **one run only**. For every fresh run against the same database, choose a new `tx_hash`, `idempotency_key`, `--notification-id`, `--transaction-id` and delivery filenames; update **all** SQL queries and CLI commands consistently. The webhook-event table enforces uniqueness on event identifiers and a hash of the signed body. Do not reuse values from an earlier run:
 
 ```sql
 INSERT INTO public.transactions
@@ -89,7 +89,7 @@ The pinned handler matches `notification.txHash` case-insensitively to USER cred
 
 ## 4. Send and inspect
 
-From the HookBuoy checkout, using the same key whose public half the app trusts:
+From the HookBuoy checkout, using the same key whose public half the app trusts (and a fresh notification ID if rerunning the pilot):
 
 ```sh
 node dist/src/cli.js send wallets.inbound.complete \
@@ -141,4 +141,4 @@ node dist/src/cli.js replay arc-tampered.delivery.json \
   --to http://127.0.0.1:3000/api/circle/webhook --expect-status 403
 ```
 
-Expect HTTP 403 and exit 0 because 403 was explicitly expected. Check that the purchase and balance remain unchanged. Preserve the commit IDs, commands, HTTP output and before/after SQL results if publishing the outcome; remove the local trust seam when finished.
+Expect HTTP 403 and exit 0 because 403 was explicitly expected. Check that the purchase and balance remain unchanged. Preserve the commit IDs, commands, HTTP output and before/after SQL results if publishing the outcome; remove the local trust seam when finished, and stop the development server and local Supabase stack.
