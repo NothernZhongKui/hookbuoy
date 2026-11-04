@@ -2,7 +2,7 @@
 
 ## Supported preview
 
-HookBuoy `0.1.0-dev.1` is a local Node.js CLI for synthetic Circle Wallets-style notifications. It does not contact Circle or sign with a Circle key.
+HookBuoy `v0.1.0` is a local Node.js CLI for synthetic Circle Wallets-style notifications. It does not contact Circle or sign with a Circle key.
 
 | Fixture alias | Synthetic `notificationType` | Synthetic `notification.state` |
 | --- | --- | --- |
