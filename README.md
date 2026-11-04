@@ -21,7 +21,7 @@ npm ci
 npm run build
 ```
 
-The commands below run the built CLI from this checkout. The npm package is prepared for a future release but is **not yet published**; do not use `npm install hookbuoy` until an npm release is announced. To inspect all options:
+The commands below run the built CLI from this checkout. The npm package is prepared for publication but **not yet confirmed published**; do not use `npm install hookbuoy` until an npm release is announced. See [npm publishing / trusted publisher setup](docs/npm-publishing.md) for the maintainer's first-publish process and future GitHub Actions releases. To inspect all options:
 
 ```sh
 node dist/src/cli.js --help
