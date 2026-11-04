@@ -416,3 +416,17 @@ test('negative scenario with wrong expected status exits 3', async () => {
     assert.match(r.stdout, /HTTP 403/);
   } finally { await ctx.close(); await rm(dir, { recursive: true, force: true }); }
 });
+
+
+test('installed-style CLI reports the released version without a project', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'hb-version-cli-'));
+  try {
+    for (const flag of ['--version', '-V', 'version']) {
+      const r = await runCli([flag], dir);
+      assert.equal(r.code, 0, r.stderr);
+      assert.equal(r.stdout.trim(), '0.2.1');
+    }
+    const invalid = await runCli(['--version', 'unexpected'], dir);
+    assert.equal(invalid.code, 2);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
