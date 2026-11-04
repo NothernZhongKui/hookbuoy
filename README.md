@@ -1,107 +1,106 @@
-# HookBuoy (v0.1.0-dev.1)
+# HookBuoy
 
-**Local-first Circle Wallets test webhook signing and exact replay.**
+Local webhook signing and replay for payment integration tests.
 
-This repository is an **experimental local vertical slice**, not a completed v0.1 release. HookBuoy is **not affiliated with Circle**. It signs with a **local test key**, never with Circle's private key. The receiving app must **explicitly** trust the local test public key in a development-only configuration; an unchanged Circle production-style verifier must reject these requests.
+HookBuoy sends synthetic Circle Wallets-shaped notifications to a local HTTP handler using a test key you control. Save a signed delivery and replay the same body bytes and signature to exercise your handler's duplicate-delivery behavior.
 
-## Requirements
+**Status:** Experimental developer preview (`0.1.0-dev.1`). HookBuoy is an independent project and is not affiliated with Circle. Its requests are **not signed by Circle**.
 
-- Node.js 22 or newer
-- For development: `npm install` then `npm run build` (TypeScript and Node types are build-only dependencies)
-- No Circle credentials, accounts, public tunnel, database, or blockchain node to exercise the local test harness
+## Why HookBuoy?
 
-## Quickstart
+Use it when you need a small, local loop for testing Circle Wallets-style signature verification and duplicate handling. A raw `curl` request does not create the test signature or preserve a signed delivery for replay; Stripe CLI targets Stripe, while Hookdeck provides a broader webhook development platform. HookBuoy is scoped to locally signed fixtures and replay.
 
-If using the attached development ZIP, compiled JavaScript is already included and can run immediately:
+## Requirements and installation
+
+Node.js 22 or newer, npm and Git are required to build from source. For this preview, use a source checkout.
+
+```sh
+git clone https://github.com/NothernZhongKui/hookbuoy.git
+cd hookbuoy
+npm ci
+npm run build
+```
+
+While the repository is private, use a GitHub account with access and an authenticated clone URL if needed. The commands below run the built CLI from this checkout. To inspect all options:
 
 ```sh
 node dist/src/cli.js --help
+```
+
+## Quickstart
+
+Run these commands from the repository root. Generate a **dedicated local test key pair**:
+
+```sh
 node dist/src/cli.js keygen --out .hookbuoy
 ```
 
-For a fresh source checkout (for example, a future GitHub repository), install the **build-only** dependencies first:
-
-```sh
-npm install
-npm run build
-npm test
-```
-
-
-**Start an HTTP receiver configured with `.hookbuoy/public.pem` as its trusted public key for *local test requests only*.** The optional self-contained test receiver below demonstrates this; it is not Circle's `arc-commerce` handler:
+Key generation refuses to overwrite an existing key pair. Start the example receiver in the first terminal. It explicitly trusts this test public key and listens only on loopback:
 
 ```sh
 node examples/local-receiver.mjs .hookbuoy/public.pem
 ```
 
-In another terminal:
+In a second terminal, from the same directory:
 
 ```sh
 node dist/src/cli.js send wallets.inbound.complete \
   --to http://127.0.0.1:3917/api/circle/webhook \
   --save first.delivery.json
+
 node dist/src/cli.js replay first.delivery.json \
   --to http://127.0.0.1:3917/api/circle/webhook \
   --times 3
 ```
 
-To test settlement against an external application, `--tx-hash` must reference an **existing local test purchase** and the handler must recognize it. An HTTP 200 alone does not prove a transaction was credited or even matched:
+Each delivery should report `HTTP 200` and `EXPECTED`. The receiver logs one `NEW` and three `DUPLICATE` observations. It is an in-memory demonstration, not a payment handler. Stop it with Ctrl-C.
+
+## Use your handler
+
+Configure your local handler to explicitly trust `.hookbuoy/public.pem` for key ID `hookbuoy-local-test` **only in an isolated test environment**. Preserve its signature verification and verify the original request body bytes before processing the event.
+
+Point `--to` at your local endpoint. The accepted destinations are HTTP `localhost`, `127.0.0.1` and `[::1]`; redirects are not followed. No tunnel or Circle credentials are needed for HookBuoy itself. Your application may have additional requirements.
+
+Two fixture aliases are available: `wallets.inbound.complete` and `wallets.inbound.failed`. Both use `notificationType: transactions.inbound`, with different synthetic states. They are illustrative templates, not complete or authoritative Circle schemas. See [compatibility](docs/compatibility.md) for identifier behavior, signing and limitations.
+
+To exercise an application path that matches an existing local test transaction, supply its hash:
 
 ```sh
 node dist/src/cli.js send wallets.inbound.complete \
-  --tx-hash 0x1111111111111111111111111111111111111111111111111111111111111111 \
-  --transaction-id my-test-transaction \
   --to http://127.0.0.1:3000/api/circle/webhook \
+  --tx-hash 0x1111111111111111111111111111111111111111111111111111111111111111 \
+  --notification-id my-test-event \
+  --transaction-id my-test-transaction \
   --save purchase.delivery.json
 ```
 
-## CLI contract
+Replace the hash with the value in your test database. IDs can also be omitted to generate UUIDs. The example receiver does not use a database.
 
-| Command | Action |
+`--save` creates a new delivery file **before** the HTTP attempt and refuses to overwrite an existing file. It stores the original body as base64 plus the content type, local key ID and signature; it does not store the private key or destination. `replay` sends the stored body and those headers sequentially without re-signing. The file may contain sensitive test payload data; keep it private.
+
+## HTTP results
+
+By default, any 2xx response is expected. Use `--expect-status 403` to test for a specific status; `--timeout-ms` defaults to 3000 ms.
+
+| Exit code | Meaning |
 | --- | --- |
-| `keygen --out DIR` | Generate P-256 local test private/public PEM key pair. Refuses overwrite. |
-| `send FIXTURE --to URL [--save FILE]` | Render Circle Wallets-shaped fixture, sign actual UTF-8 body bytes, send one POST. |
-| `replay FILE --to URL [--times N]` | Send byte-identical original body and original signed headers sequentially N times, no re-signing or hidden retry. |
+| `0` | All responses matched the expected status. |
+| `2` | Invalid input, key, delivery file or file operation. |
+| `3` | At least one unexpected HTTP status, with no transport error. |
+| `4` | At least one connection or timeout error. |
 
-`--expect-status N` matches an exact HTTP response (e.g. `403` when checking a bad signature). Defaults to any 2xx. `--timeout-ms` defaults to 3000. Only loopback HTTP addresses are accepted (`localhost`, `127.0.0.1`, `[::1]`); HTTP redirects are never followed.
+An expected HTTP response does **not** prove a payment was matched, settled or credited exactly once. Inspect your application's state separately. See the [Arc Commerce pilot](examples/arc-commerce/README.md) for a concrete integration procedure.
 
-| Exit code | Interpretation |
-| --- | --- |
-| `0` | All observed HTTP statuses matched the expectation. Does **not** assert business processing. |
-| `2` | Invalid CLI input, invalid saved request, unavailable test key, or local file error. |
-| `3` | Unexpected HTTP response status. |
-| `4` | Connection failure or timeout. |
+## Security and scope
 
-## Fixtures
+The generated P-256 key pair belongs to you. A receiver using Circle's normal public-key lookup will not trust it unless explicitly configured to do so for local testing. Keep the private key out of version control; never enable local test-key trust in a production deployment or disable signature verification there.
 
-Two experimental **Circle Wallets** envelope templates are bundled: `wallets.inbound.complete` and `wallets.inbound.failed`, both with real event type `transactions.inbound`. The names beginning `wallets.` are **HookBuoy fixture aliases**, not Circle event names. Payloads are synthetic; no claim is made that all fields are official, complete, or version-invariant.
+HookBuoy does not create payments, fetch Circle keys, send to remote endpoints, simulate Circle's delivery schedule, or verify ledger and business outcomes. Replay is an intentional sequence of repeated requests, not an automatic retry policy.
 
-- Envelope based on the public Circle [Arc Commerce unit test](https://github.com/circlefin/arc-commerce/blob/master/tests/unit/circle-webhook.test.ts), inspected 2026-11-05.
-- Values `notificationId` (delivery identity) and `notification.id` (underlying transaction identity) are intentionally separate; the source code of the public demo distinguishes them.
-- Each `send` generates new identifiers and timestamp unless explicitly overridden; `replay` **never** changes any of them.
-- The default `txHash` is dummy data and will not match an existing purchase. Provide `--tx-hash` to reach a meaningful business path.
-- The signature mimics the Circle Wallets verification mechanism used by the sample handler (`ECDSA P-256 with SHA-256`, signature base64; `X-Circle-Signature`, `X-Circle-Key-Id`). The trust root is strictly local and synthetic.
-
-## Saved delivery file
-
-`--save` writes a `hookbuoy.delivery.v1` JSON envelope containing the **original byte sequence encoded as base64** and its original signed headers; no test private key, API token, or remote endpoint is saved. Replay decodes the original body bytes; it does **not** parse/re-serialize the embedded payload. Saved files are created with restrictive file permissions and are never silently overwritten.
-
-## Boundaries
-
-- **No actual Circle signing authority**: a production verifier will reject synthetic signatures.
-- **No production bypasses**: never enable local test trust on a deployed application.
-- **No provider framework, tunnel, payment creation, ledger validation, dashboard or SaaS**.
-- **External pilot completed locally** on `arc-commerce` at `1a4f09d`. Signed HTTP 200 and Supabase `signature_valid=true` confirmed. Test-purchase settlement and no double-credit after replay were developer-reported; final verification output was not retained.
-- No automated claim that HTTP 200 implies payment success, exactly-once processing, or correct settlement.
-
-## Tests
+## Development
 
 ```sh
 npm test
 ```
 
-Tests spin up an in-process loopback HTTP server that performs **real P-256 signature verification** with test trust, checks byte-exact replay and tamper rejection, and exercises HTTP 500, timeout, and connection failure. They are **not** a substitute for independent Circle app integration.
-
-## Contribution direction
-
-Keep the tool small. First external milestone is an independently reproducible `arc-commerce` pilot with the minimal amount of explicit, development-only test trust wiring. Do not publish to npm until package name/trademark checks and that pilot are complete.
+See [compatibility and fixture provenance](docs/compatibility.md) and the [Arc Commerce pilot](examples/arc-commerce/README.md). Licensed under [MIT](LICENSE).
