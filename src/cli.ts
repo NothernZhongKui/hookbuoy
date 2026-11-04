@@ -7,7 +7,7 @@ import { createDelivery, loadDelivery, saveDelivery } from './artifact.js';
 import { isFixtureName, makeFixture } from './fixtures.js';
 import { deliverTimes, parseLocalUrl } from './delivery.js';
 
-const USAGE = `HookBuoy v0.1.0-dev.1 — Circle Wallets local test webhooks (NOT Circle-signed)
+const USAGE = `HookBuoy v0.1.0 — Circle Wallets local test webhooks (NOT Circle-signed)
 
 Usage:
   hookbuoy keygen --out .hookbuoy
