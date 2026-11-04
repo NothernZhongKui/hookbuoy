@@ -53,10 +53,13 @@ try {
   assert.match(help, /Usage:/);
   assert.match(help, /hookbuoy replay/);
 
-  await run(cli, ['keygen', '--out', '.hookbuoy'], { cwd: dir });
+  // Verify the shipped v0.2 initialization and aliases, not only the v0.1 legacy commands.
+  const events = await run(cli, ['events'], { cwd: dir });
+  assert.match(events, /inbound.complete/);
   const publicKey = await readFile(join(dir, '.hookbuoy', 'public.pem'));
 
   const seen = [];
+  let rejected = 0;
   server = createServer(async (req, res) => {
     try {
       const chunks = [];
@@ -68,6 +71,7 @@ try {
       assert.equal(req.headers['x-circle-key-id'], 'hookbuoy-local-test');
       assert.equal(typeof signature, 'string');
       if (!verify('sha256', bytes, publicKey, Buffer.from(signature, 'base64'))) {
+        rejected += 1;
         res.writeHead(403).end();
         return;
       }
@@ -82,16 +86,24 @@ try {
     server.listen(0, '127.0.0.1', resolve);
   });
   const endpoint = `http://127.0.0.1:${server.address().port}/api/circle/webhook`;
-  const sent = await run(cli, ['send', 'wallets.inbound.complete', '--to', endpoint, '--save', 'pilot.delivery.json'], { cwd: dir });
+  await run(cli, ['init', '--to', endpoint], { cwd: dir });
+  const status = await run(cli, ['status'], { cwd: dir });
+  assert.match(status, /Test keys: ready/);
+  const sent = await run(cli, ['send', 'inbound.complete'], { cwd: dir });
   assert.match(sent, /HTTP 200/);
-  const replay = await run(cli, ['replay', 'pilot.delivery.json', '--to', endpoint, '--times', '3'], { cwd: dir });
+  const replay = await run(cli, ['replay', 'last', '--times', '3'], { cwd: dir });
   assert.match(replay, /HTTP 200/);
+  const badSignature = await run(cli, ['check', 'signature'], { cwd: dir });
+  assert.match(badSignature, /HTTP 403/);
+  const badBody = await run(cli, ['check', 'body'], { cwd: dir });
+  assert.match(badBody, /HTTP 403/);
+  assert.equal(rejected, 2);
   assert.equal(seen.length, 4);
   for (const event of seen.slice(1)) {
     assert.deepEqual(event.bytes, seen[0].bytes);
     assert.equal(event.signature, seen[0].signature);
   }
-  console.log('PASS: packed files, installed CLI, local signature and exact replay (4 deliveries)');
+  console.log('PASS: packed files, installed v0.2 CLI, init, short send, exact replay (4 accepted deliveries), and two rejected invalid signatures');
 } finally {
   if (server) await new Promise((resolve, reject) => server.close(err => err ? reject(err) : resolve()));
   await rm(dir, { recursive: true, force: true });
