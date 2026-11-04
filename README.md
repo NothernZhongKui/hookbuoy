@@ -4,7 +4,7 @@ Local webhook signing and replay for payment integration tests.
 
 HookBuoy sends synthetic Circle Wallets-shaped notifications to a local HTTP handler using a test key you control. Save a signed delivery and replay the same body bytes and signature to exercise your handler's duplicate-delivery behavior.
 
-**Status:** Experimental developer preview (`0.1.0-dev.1`). HookBuoy is an independent project and is not affiliated with Circle. Its requests are **not signed by Circle**.
+**Status:** Initial public release (`v0.1.0`); the 0.x interface and fixture templates remain experimental. HookBuoy is an independent project and is not affiliated with Circle. Its requests are **not signed by Circle**.
 
 ## Why HookBuoy?
 
@@ -12,7 +12,7 @@ Use it when you need a small, local loop for testing Circle Wallets-style signat
 
 ## Requirements and installation
 
-Node.js 22 or newer, npm and Git are required to build from source. For this preview, use a source checkout.
+Node.js 22 or newer, npm and Git are required to build from source. Until an npm package is published, install from a source checkout.
 
 ```sh
 git clone https://github.com/NothernZhongKui/hookbuoy.git
@@ -106,4 +106,4 @@ npm run smoke:package
 
 The package smoke test builds an npm tarball, installs it in a temporary isolated directory without developer dependencies, verifies the installed CLI, and exercises local signed delivery and three byte-exact replays. A green source test alone does not establish that an installed package works.
 
-See [compatibility and fixture provenance](docs/compatibility.md) and the [Arc Commerce pilot](examples/arc-commerce/README.md). Licensed under [MIT](LICENSE).
+See [compatibility and fixture provenance](docs/compatibility.md), the [Arc Commerce pilot](examples/arc-commerce/README.md), and [v0.1.0 release notes](docs/releases/v0.1.0.md). Licensed under [MIT](LICENSE).
