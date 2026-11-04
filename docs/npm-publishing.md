@@ -1,6 +1,6 @@
 # npm publication and trusted publishing
 
-HookBuoy v0.2.0 has been published on npm by `nothernzhongkui`. Its `latest` dist-tag points to `0.2.0`. Initial publication was made manually with npm account authentication. The owner then configured npm Trusted Publishing for future releases.
+HookBuoy v0.2.0 was initially published manually. The v0.2.1 [OIDC publication run](https://github.com/NothernZhongKui/hookbuoy/actions/runs/41928238170) reported success and a signed provenance statement. The maintainer subsequently confirmed the npm package. See the [README](../README.md) for installation.
 
 ## Bootstrap status (completed)
 
@@ -23,7 +23,7 @@ The package publisher configuration has been confirmed via `npm trust list hookb
 | Environment | Leave empty (unless a matching protected GitHub environment is configured) |
 | Allowed actions | Enable **npm publish** (not only npm stage publish) |
 
-The workflow file is `.github/workflows/npm-publish.yml`. Enter only the filename in npm, not its full path. The trusted publisher is already connected; validate it with the next GitHub Actions publication. Newly created trusted publisher entries may have an initial validation window. GitHub-hosted Actions runners with Node 24, npm 11+, and `id-token: write` are required. No `NPM_TOKEN` repository secret is needed. GitHub Actions trusted publishing automatically produces npm provenance for public repos/packages.
+The workflow file is `.github/workflows/npm-publish.yml`. Enter only the filename in npm, not its full path. The trusted publisher was used by the v0.2.1 workflow. Verify the published package separately after each publication. Newly created trusted publisher entries may have an initial validation window. GitHub-hosted Actions runners with Node 24, npm 11+, and `id-token: write` are required. No `NPM_TOKEN` repository secret is needed. GitHub Actions trusted publishing automatically produces npm provenance for public repos/packages.
 
 For every **subsequent release**:
 
@@ -35,6 +35,6 @@ For every **subsequent release**:
 
 **Security caveat:** a manual dispatch is not a replacement for tag protection or GitHub environment approvals. Keep tag creation restricted and use a protected GitHub environment for stronger release approval once the initial publish is stable. Only release trusted commits. Avoid publishing the same version twice.
 
-Do **not** recreate or move the already published `v0.2.0` tag. Use OIDC for `v0.2.1` and later. The workflow is present on the current default branch.
+Do not move already published tags; previously published package versions are immutable. The workflow is present on the current default branch.
 
 Official reference: https://docs.npmjs.com/trusted-publishers/

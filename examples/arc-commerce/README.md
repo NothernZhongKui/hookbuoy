@@ -1,5 +1,7 @@
 # Arc Commerce local pilot
 
+For the automated v0.2 local test, see the [E2E guide](../../docs/arc-commerce-e2e.md). The procedure below is the manual alternative.
+
 This procedure exercises HookBuoy against the original webhook handler in [Circle's Arc Commerce sample](https://github.com/circlefin/arc-commerce) at commit `1a4f09d79883c15cb2fa8527a3ad210b3e01a552`, with a development-only change to public-key lookup in the local checkout. It does not send a real Circle notification or require changes to Circle's upstream repository.
 
 **Prior observation:** the project author reports that a locally signed delivery received HTTP 200 and was recorded in Supabase with `signature_valid=true`. The author also reports that a test purchase was credited once on the initial send, with no additional credit on replay. The final machine-readable settlement and replay log was not retained; repeat and record the checks below before treating those outcomes as independently reproduced.
