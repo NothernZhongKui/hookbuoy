@@ -1,0 +1,47 @@
+name: Arc Fintech Gateway E2E
+on:
+  pull_request:
+    paths:
+      - 'scripts/arc-fintech-e2e.mjs'
+      - 'docs/arc-fintech-e2e.md'
+      - '.github/workflows/arc-fintech-gateway-e2e.yml'
+  workflow_dispatch:
+
+jobs:
+  gateway-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build HookBuoy
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Clone pinned external app
+        run: |
+          git clone https://github.com/circlefin/arc-fintech.git /tmp/hookbuoy-arc-fintech
+          git -C /tmp/hookbuoy-arc-fintech checkout --detach 0b10d386ce2a30e1a0572f28a5aad4aaf4fc66e6
+          npm ci --prefix /tmp/hookbuoy-arc-fintech --no-audit --no-fund
+      - name: Start disposable local Supabase
+        working-directory: /tmp/hookbuoy-arc-fintech
+        env:
+          OPENAI_API_KEY: local-pilot-only
+        run: npx --no-install supabase start
+      - name: Run pinned external Gateway E2E
+        run: node scripts/arc-fintech-e2e.mjs /tmp/hookbuoy-arc-fintech arc-fintech-gateway-result.json
+      - name: Upload non-secret result
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arc-fintech-gateway-result
+          path: arc-fintech-gateway-result.json
+          retention-days: 14
+      - name: Stop local Supabase
+        if: always()
+        working-directory: /tmp/hookbuoy-arc-fintech
+        run: npx --no-install supabase stop || true
