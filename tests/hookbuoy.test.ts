@@ -424,7 +424,7 @@ test('installed-style CLI reports the released version without a project', async
     for (const flag of ['--version', '-V', 'version']) {
       const r = await runCli([flag], dir);
       assert.equal(r.code, 0, r.stderr);
-      assert.equal(r.stdout.trim(), '0.2.1');
+      assert.equal(r.stdout.trim(), '0.3.0-dev.1');
     }
     const invalid = await runCli(['--version', 'unexpected'], dir);
     assert.equal(invalid.code, 2);
@@ -500,7 +500,7 @@ test('CLI Gateway profile and short event route through existing delivery engine
     assert.equal(result.code, 0, result.stderr);
     result = await runCli(['events'], dir);
     assert.match(result.stdout, /gateway.deposit.finalized/);
-    result = await runCli(['send', 'gateway.deposit.finalized', '--event-id', 'gw-event',
+    result = await runCli(['send', 'gateway.deposit.finalized', '--key', ctx.keys.privatePath, '--event-id', 'gw-event',
       '--wallet-address', '0x' + '33'.repeat(20), '--domain', '26', '--amount', '5.01'], dir);
     assert.equal(result.code, 0, result.stderr);
     assert.match(result.stdout, /HTTP 200/);
