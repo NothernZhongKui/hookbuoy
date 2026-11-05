@@ -381,6 +381,14 @@ test('menu accepts numbered choices and slash commands without shell evaluation'
   assert.equal(menuCommand(' '), null);
 });
 
+test('menu signature shortcut follows explicit Gateway context without changing other shortcuts', () => {
+  assert.deepEqual(menuCommand('3'), ['check', 'signature']);
+  assert.deepEqual(menuCommand('3', false), ['check', 'signature']);
+  assert.deepEqual(menuCommand('3', true), ['send', 'gateway.deposit.finalized', '--fault', 'signature']);
+  assert.deepEqual(menuCommand('1', true), ['send', 'inbound.complete']);
+  assert.deepEqual(menuCommand('8', true), ['send', 'gateway.deposit.finalized']);
+});
+
 test('CLI check signature and check body produce an expected HTTP 403', async () => {
   const ctx = await harness();
   const dir = await mkdtemp(join(tmpdir(), 'hb-fault-cli-'));

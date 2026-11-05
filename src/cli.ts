@@ -74,14 +74,17 @@ function expectedStatus(input?: string): number | undefined {
   if (!/^[0-9]{3}$/.test(input) || Number(input) < 100 || Number(input) > 599) throw new Error('--expect-status must be HTTP 100..599');
   return Number(input);
 }
-function present(results: Awaited<ReturnType<typeof deliverTimes>>, endpoint: string, expect?: number): void {
-  console.log(`Endpoint: ${endpoint}`);
+function present(results: Awaited<ReturnType<typeof deliverTimes>>, endpoint: string, expect?: number, concise = false): void {
+  if (!concise) console.log(`Endpoint: ${endpoint}`);
   for (const [idx, r] of results.results.entries()) {
     const observed = r.error ?? `HTTP ${r.status}`;
     const ok = !r.error && (expect === undefined ? (r.status! >= 200 && r.status! < 300) : r.status === expect);
-    console.log(`  ${idx+1}/${results.results.length}  ${observed}  ${r.ms} ms  ${ok ? 'EXPECTED' : 'UNEXPECTED'}`);
+    const counter = results.results.length > 1 ? `${idx+1}/${results.results.length}  ` : '';
+    console.log(concise
+      ? `  ${counter}${observed}  ${r.ms} ms  ${ok ? 'EXPECTED' : 'UNEXPECTED'}`
+      : `  ${idx+1}/${results.results.length}  ${observed}  ${r.ms} ms  ${ok ? 'EXPECTED' : 'UNEXPECTED'}`);
   }
-  console.log('Observation: HTTP transport only; payment/settlement state NOT verified.');
+  if (!concise) console.log('Observation: HTTP transport only; payment/settlement state NOT verified.');
 }
 
 
@@ -90,14 +93,15 @@ function fixtureAlias(name: string): (typeof FIXTURE_NAMES)[number] | undefined 
   return FIXTURE_NAMES.find(x => x === full);
 }
 
-export function menuCommand(line: string): string[] | 'quit' | null {
+// The menu can adapt its negative test to a known Gateway endpoint.
+export function menuCommand(line: string, gatewayTarget = false): string[] | 'quit' | null {
   const text = line.trim();
   if (!text) return null;
   if (text === '0' || text === '/quit' || text === '/exit' || text === 'quit' || text === 'exit') return 'quit';
   const shortcuts: Record<string, string[]> = {
     '1': ['send', 'inbound.complete'],
     '2': ['replay', 'last'],
-    '3': ['check', 'signature'],
+    '3': gatewayTarget ? ['send', 'gateway.deposit.finalized', '--fault', 'signature'] : ['check', 'signature'],
     '4': ['events'],
     '5': ['status'],
     '6': ['init'],
@@ -110,25 +114,28 @@ export function menuCommand(line: string): string[] | 'quit' | null {
   return input.split(/\s+/);
 }
 
+function gatewayMenuTarget(project: { endpoint: string; profile: Profile } | null): boolean {
+  return !!project && (project.profile === 'arc-fintech' ||
+    new URL(project.endpoint).pathname === '/api/circle/gateway-webhook');
+}
+
 async function interactive(): Promise<number> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    console.log('\n  HookBuoy  •  Local webhook development\n');
+    console.log('\n  HookBuoy  •  Local webhook development');
+    console.log('  Synthetic test events • HTTP only, no payment verification\n');
     while (true) {
       const project = await loadProject();
       console.log('  ' + (project ? project.profile + '  |  ' + project.endpoint : 'Not configured • choose 6 to initialize'));
+      const gatewayTarget = gatewayMenuTarget(project);
       console.log('  ─────────────────────────────────────────────');
-      console.log('  1  Send Wallets COMPLETE');
-      console.log('  2  Replay last delivery');
-      console.log('  3  Test invalid signature (expect 403)');
-      console.log('  4  Browse events');
-      console.log('  5  Project status');
-      console.log('  6  Initialize project');
-      console.log('  7  Help');
-      console.log('  8  Send Gateway deposit');
+      console.log('  1  Wallets COMPLETE      8  Gateway deposit');
+      console.log('  2  Replay last           3  ' + (gatewayTarget ? 'Gateway' : 'Wallets') + ' bad signature');
+      console.log('  4  Events                5  Status');
+      console.log('  6  Initialize            7  Help');
       console.log('  0  Exit');
       const line = (await rl.question('\n  › ')).trim();
-      const chosen = menuCommand(line);
+      const chosen = menuCommand(line, gatewayTarget);
       if (chosen === 'quit') return 0;
       if (!chosen) continue;
       const parts = [...chosen];
@@ -148,7 +155,7 @@ async function interactive(): Promise<number> {
         else { console.log('  Unknown profile.'); continue; }
       }
       console.log();
-      const code = await run(parts);
+      const code = await run(parts, { concise: true });
       if (code !== 0) console.log('  Exit code: ' + code);
       console.log();
     }
@@ -160,7 +167,7 @@ async function interactive(): Promise<number> {
   }
 }
 
-export async function run(argv: string[]): Promise<number> {
+export async function run(argv: string[], display: { concise?: boolean } = {}): Promise<number> {
   try {
     const [cmd, ...tail] = argv;
     if (!cmd) {
@@ -213,7 +220,7 @@ export async function run(argv: string[]): Promise<number> {
       const kind = tail[0] && !tail[0].startsWith('--') ? tail[0] : 'signature';
       if (kind !== 'signature' && kind !== 'body') throw new Error('check accepts signature or body');
       const rest = tail[0] === kind ? tail.slice(1) : tail;
-      return run(['send', 'inbound.complete', '--fault', kind, ...rest]);
+      return run(['send', 'inbound.complete', '--fault', kind, ...rest], display);
     }
     if (cmd === 'keygen') {
       const { pos, opts } = parseArgs(tail, ['--out']);
@@ -246,15 +253,27 @@ export async function run(argv: string[]): Promise<number> {
         if (project && !opts['--save']) await ensureDeliveryDir();
         await saveDelivery(savePath, artifact);
         if (project) await rememberDelivery(project, savePath);
-        console.log('Saved exact signed request: ' + resolve(savePath));
+        if (!display.concise) console.log('Saved exact signed request: ' + resolve(savePath));
       }
-      console.log(fault
-        ? 'Fault: ' + fault + ' (intentionally invalid signature; HTTP result only).'
-        : 'Signature: LOCAL TEST P-256, NOT authenticated by Circle.');
-      if (usesFakeHash) console.warn('Warning: synthetic txHash. For app side effects, set --tx-hash to an EXISTING local test purchase.');
-      if (usesFakeWallet) console.warn('Warning: synthetic Gateway walletAddress. For app side effects, use an EXISTING local test wallet via --wallet-address.');
+      if (display.concise) {
+        const event = JSON.parse(body.toString('utf8')) as { notification?: { id?: string } };
+        const id = event.notification?.id;
+        console.log((fixture === 'gateway.deposit.finalized' ? 'Gateway · deposit.finalized' : 'Wallets · ' + fixture.replace('wallets.', '')) +
+          (fault ? ' · bad ' + fault : ''));
+        if (id) console.log('  Event  ' + id.slice(0, 8) + '…');
+      } else {
+        console.log(fault
+          ? 'Fault: ' + fault + ' (intentionally invalid signature; HTTP result only).'
+          : 'Signature: LOCAL TEST P-256, NOT authenticated by Circle.');
+        if (usesFakeHash) console.warn('Warning: synthetic txHash. For app side effects, set --tx-hash to an EXISTING local test purchase.');
+        if (usesFakeWallet) console.warn('Warning: synthetic Gateway walletAddress. For app side effects, use an EXISTING local test wallet via --wallet-address.');
+      }
       const report = await deliverTimes(artifact, endpoint, 1, ms, expect);
-      present(report, endpoint, expect);
+      present(report, endpoint, expect, display.concise);
+      if (display.concise) {
+        if (savePath) console.log('  Saved  ' + (project && !opts['--save'] ? 'last (replay with 2)' : resolve(savePath)));
+        if (usesFakeHash || usesFakeWallet) console.log('  Data   synthetic' + (usesFakeHash ? ' hash' : '') + (usesFakeWallet ? ' / wallet' : ''));
+      }
       return report.exitCode;
     }
     if (cmd === 'replay') {
@@ -270,9 +289,14 @@ export async function run(argv: string[]): Promise<number> {
       const ms = positiveInteger(opts['--timeout-ms'],3000,'--timeout-ms',60000);
       const expect = expectedStatus(opts['--expect-status']);
       const { artifact } = await loadDelivery(path);
-      console.log('Replay: exact saved body + headers/signature; no re-signing, ID changes, or hidden retries.');
+      console.log(display.concise ? 'Replay · exact saved body and signature' :
+        'Replay: exact saved body + headers/signature; no re-signing, ID changes, or hidden retries.');
       const report = await deliverTimes(artifact, endpoint, times, ms, expect);
-      present(report, endpoint, expect);
+      present(report, endpoint, expect, display.concise);
+      if (display.concise && report.exitCode === 3 && expect === undefined &&
+          report.results.some(r => r.status === 403)) {
+        console.log('  Tip: replay of a negative case? Use /replay last --expect-status 403');
+      }
       return report.exitCode;
     }
     throw new Error(`Unknown command ${cmd}`);
