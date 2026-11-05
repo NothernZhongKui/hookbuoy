@@ -78,3 +78,5 @@ npm test
 Keep the private key and saved deliveries out of version control. Never enable local test-key trust in production. HookBuoy cannot authenticate Circle notifications, send to remote endpoints, simulate a provider's retry schedule or guarantee business outcomes.
 
 [CLI guide](docs/cli.md) · [Compatibility](docs/compatibility.md) · [Gateway preview](docs/gateway-preview.md) · [Arc Commerce](docs/arc-commerce-e2e.md) · [MIT license](LICENSE)
+
+Feedback, bug reports, and ideas are welcome — reach out on X: [@AdvanZeroX](https://x.com/AdvanZeroX).
