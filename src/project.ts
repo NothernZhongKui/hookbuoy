@@ -11,6 +11,7 @@ export type ProjectConfig = {
   endpoint: string;
   profile: Profile;
   lastDelivery?: string;
+  lastExpectedStatus?: number;
 };
 
 export function projectDir(cwd = process.cwd()): string {
@@ -41,7 +42,10 @@ export async function loadProject(cwd = process.cwd()): Promise<ProjectConfig | 
   if (data.format !== FORMAT ||
       (data.profile !== 'custom' && data.profile !== 'arc-commerce' && data.profile !== 'arc-fintech') ||
       typeof data.endpoint !== 'string' ||
-      (data.lastDelivery !== undefined && typeof data.lastDelivery !== 'string')) {
+      (data.lastDelivery !== undefined && typeof data.lastDelivery !== 'string') ||
+      (data.lastExpectedStatus !== undefined &&
+        (!Number.isInteger(data.lastExpectedStatus) || (data.lastExpectedStatus as number) < 100 || (data.lastExpectedStatus as number) > 599))
+  ) {
     throw new Error('Invalid or unsupported project configuration');
   }
   parseLocalUrl(data.endpoint);
@@ -66,10 +70,10 @@ export async function keyStatus(cwd = process.cwd()): Promise<'ready'|'missing'|
   const pub = await has(join(dir, 'public.pem'));
   return priv && pub ? 'ready' : priv || pub ? 'incomplete' : 'missing';
 }
-export async function rememberDelivery(config: ProjectConfig, path: string, cwd = process.cwd()): Promise<void> {
+export async function rememberDelivery(config: ProjectConfig, path: string, cwd = process.cwd(), expectedStatus?: number): Promise<void> {
   const tmp = join(projectDir(cwd), '.config-' + randomUUID() + '.tmp');
   try {
-    await writeFile(tmp, JSON.stringify({ ...config, lastDelivery: resolve(path) }, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+    await writeFile(tmp, JSON.stringify({ ...config, lastDelivery: resolve(path), lastExpectedStatus: expectedStatus }, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
     await rename(tmp, configPath(cwd));
   } catch (e) {
     await unlink(tmp).catch(() => {});

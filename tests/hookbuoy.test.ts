@@ -374,6 +374,8 @@ test('body fault keeps valid JSON, original signature, and produces HTTP 403', a
 test('menu accepts numbered choices and slash commands without shell evaluation', () => {
   assert.deepEqual(menuCommand('1'), ['send','inbound.complete']);
   assert.deepEqual(menuCommand('2'), ['replay','last']);
+  assert.deepEqual(menuCommand('2', true, 403), ['replay', 'last', '--expect-status', '403']);
+  assert.deepEqual(menuCommand('2', false, 409), ['replay', 'last', '--expect-status', '409']);
   assert.deepEqual(menuCommand('3'), ['check','signature']);
   assert.deepEqual(menuCommand('/events'), ['events']);
   assert.deepEqual(menuCommand('6'), ['init']);
@@ -411,6 +413,51 @@ test('CLI check signature and check body produce an expected HTTP 403', async ()
     assert.match(r.stdout, /HTTP 403/);
     assert.equal(ctx.requests.length, 3);
   } finally { await ctx.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test('saved negative-delivery expected status survives CLI restart and clears after a valid send', async () => {
+  const ctx = await harness();
+  const dir = await mkdtemp(join(tmpdir(), 'hb-menu-replay-status-'));
+  try {
+    let r = await runCli(['init', '--to', ctx.origin], dir);
+    assert.equal(r.code, 0, r.stderr);
+
+    r = await runCli(['send', 'gateway.deposit.finalized', '--fault', 'signature'], dir);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(r.stdout, /HTTP 403/);
+    const negative = await loadProject(dir);
+    assert.equal(negative?.lastExpectedStatus, 403);
+    assert.ok(negative?.lastDelivery);
+
+    // The menu uses the saved expected status for its numbered Replay option.
+    r = await runCli(['replay', 'last', '--expect-status', String(negative!.lastExpectedStatus)], dir);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(r.stdout, /HTTP 403/);
+
+    r = await runCli(['send', 'gateway.deposit.finalized', '--key', ctx.keys.privatePath], dir);
+    assert.equal(r.code, 0, r.stderr);
+    const positive = await loadProject(dir);
+    assert.equal(positive?.lastExpectedStatus, undefined);
+    assert.notEqual(positive?.lastDelivery, negative?.lastDelivery);
+    r = await runCli(['replay', 'last'], dir);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(r.stdout, /HTTP 200/);
+  } finally { await ctx.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test('invalid saved expected status is rejected without weakening project validation', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'hb-invalid-expected-'));
+  try {
+    await initProject('http://127.0.0.1:3917/api/circle/webhook', 'custom', dir);
+    const path = join(dir, '.hookbuoy', 'config.json');
+    const original = JSON.parse(await readFile(path, 'utf8'));
+    for (const invalid of [0, 99, 600, 200.5, '403', null]) {
+      await writeFile(path, JSON.stringify({ ...original, lastExpectedStatus: invalid }));
+      await assert.rejects(loadProject(dir), /Invalid or unsupported project configuration/);
+    }
+    await writeFile(path, JSON.stringify(original));
+    assert.equal((await loadProject(dir))?.lastExpectedStatus, undefined);
+  } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
 test('negative scenario with wrong expected status exits 3', async () => {
