@@ -132,8 +132,10 @@ async function interactive(): Promise<number> {
       console.log('  1  Wallets COMPLETE      8  Gateway deposit');
       console.log('  2  Replay last           3  ' + (gatewayTarget ? 'Gateway' : 'Wallets') + ' bad signature');
       console.log('  4  Events                5  Status');
-      console.log('  6  Initialize            7  Help');
+      console.log('  6  ' + (project ? 'Already configured' : 'Initialize') + '    7  Help');
       console.log('  0  Exit');
+      if (project?.lastDelivery && project.lastExpectedStatus !== undefined)
+        console.log('  Last delivery expects HTTP ' + project.lastExpectedStatus);
       const line = (await rl.question('\n  › ')).trim();
       const chosen = menuCommand(line, gatewayTarget);
       if (chosen === 'quit') return 0;
@@ -144,7 +146,10 @@ async function interactive(): Promise<number> {
         parts.push(answer === 'failed' ? 'inbound.failed' : 'inbound.complete');
       }
       if (parts[0] === 'replay' && parts.length === 1) parts.push('last');
+      if (line === '2' && project?.lastExpectedStatus !== undefined)
+        parts.push('--expect-status', String(project.lastExpectedStatus));
       if (parts[0] === 'init' && parts.length === 1) {
+        if (project) { console.log('  Already configured. Choose 5 for project status.'); continue; }
         const profile = (await rl.question('  Profile [custom/arc-commerce/arc-fintech] (arc-commerce): ')).trim();
         if (profile === 'custom') {
           const endpoint = (await rl.question('  Local HTTP endpoint: ')).trim();
@@ -252,7 +257,7 @@ export async function run(argv: string[], display: { concise?: boolean } = {}): 
       if (savePath) {
         if (project && !opts['--save']) await ensureDeliveryDir();
         await saveDelivery(savePath, artifact);
-        if (project) await rememberDelivery(project, savePath);
+        if (project) await rememberDelivery(project, savePath, undefined, expect);
         if (!display.concise) console.log('Saved exact signed request: ' + resolve(savePath));
       }
       if (display.concise) {
