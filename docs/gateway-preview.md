@@ -2,7 +2,7 @@
 
 HookBuoy supports a first **synthetic** Gateway fixture: `gateway.deposit.finalized`. The target consumer is the Circle [Arc Fintech sample](https://github.com/circlefin/arc-fintech), pinned for review at commit `0b10d386ce2a30e1a0572f28a5aad4aaf4fc66e6` (`master`, 2026-11-05).
 
-This is not a live Gateway notification or a guarantee of compatibility with every Circle subscription. The fixture is informed by Arc Fintech's `GatewayDepositNotification` type and its `app/api/circle/gateway-webhook/route.ts` handler. In particular, that handler uses `notification.id` to deduplicate, `txHash` to reconcile an existing local transaction, and `walletAddress` / `domain` to attribute otherwise unknown deposits.
+This is not a live Gateway notification or a guarantee of compatibility with every Circle subscription. The fixture is informed by Arc Fintech's `GatewayDepositNotification` type. Its dedicated `app/api/circle/gateway-webhook/route.ts` endpoint re-exports `POST` and `HEAD` from the shared `app/api/circle/webhook/route.ts` handler. That shared handler uses `notification.id` to deduplicate, `txHash` to reconcile an existing local transaction, and `walletAddress` / `domain` to attribute otherwise unknown deposits.
 
 ## Commands
 
