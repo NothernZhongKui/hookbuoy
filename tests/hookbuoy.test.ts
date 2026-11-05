@@ -430,3 +430,88 @@ test('installed-style CLI reports the released version without a project', async
     assert.equal(invalid.code, 2);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
+
+
+test('Gateway fixture uses separate event ID, wallet address, domain and amount', async () => {
+  const hash = '0x' + '12'.repeat(32);
+  const address = '0x' + '34'.repeat(20);
+  const { body, usesFakeWallet, usesFakeHash } = await makeFixture('gateway.deposit.finalized', {
+    txHash: hash, notificationId: 'gateway-notif-1', eventId: 'gateway-event-1',
+    walletAddress: address, domain: '26', amount: '12.345678',
+  });
+  const envelope = JSON.parse(body.toString('utf8'));
+  assert.equal(envelope.notificationType, 'gateway.deposit.finalized');
+  assert.equal(envelope.notificationId, 'gateway-notif-1');
+  assert.equal(envelope.notification.id, 'gateway-event-1');
+  assert.equal(envelope.notification.walletAddress, address);
+  assert.equal(envelope.notification.from, address);
+  assert.equal(envelope.notification.domain, '26');
+  assert.equal(envelope.notification.amount, '12.345678');
+  assert.equal(envelope.notification.txHash, hash);
+  assert.equal(usesFakeWallet, false);
+  assert.equal(usesFakeHash, false);
+});
+
+test('Gateway fixture rejects invalid inputs and Wallets-only flags', async () => {
+  const invalid = [
+    { walletAddress: 'not-an-address' },
+    { domain: '1.2' },
+    { domain: '-1' },
+    { amount: '-2' },
+    { amount: '0' },
+    { amount: '1.1234567' },
+    { eventId: 'bad id' },
+    { transactionId: 'not-gateway' },
+  ];
+  for (const options of invalid) {
+    await assert.rejects(makeFixture('gateway.deposit.finalized', options), /Gateway|--wallet-address|--domain|--amount|--event-id/);
+  }
+  await assert.rejects(makeFixture('wallets.inbound.complete', { walletAddress: '0x' + '22'.repeat(20) }), /require a Gateway fixture/);
+});
+
+test('Gateway signed request can be replayed byte-exactly and rejected after tampering', async () => {
+  const ctx = await harness();
+  try {
+    const { body } = await makeFixture('gateway.deposit.finalized', { eventId: 'gateway-01' });
+    const signed = await createDelivery(body, ctx.keys.privatePath, 'gateway.deposit.finalized');
+    const original = JSON.stringify(signed);
+    assert.equal(await verifyBytes(body, signed.request.headers['x-circle-signature'], ctx.keys.publicPath), true);
+    const report = await deliverTimes(signed, ctx.origin, 3, 1000);
+    assert.equal(report.exitCode, 0);
+    assert.equal(ctx.requests.length, 3);
+    for (const request of ctx.requests) {
+      assert.deepEqual(request.body, body);
+      assert.equal(request.signature, signed.request.headers['x-circle-signature']);
+    }
+    const tampered = applyFault(signed, 'body');
+    assert.equal(JSON.stringify(signed), original);
+    const changed = Buffer.from(tampered.request.bodyBase64, 'base64');
+    assert.equal(JSON.parse(changed.toString('utf8')).notification.amount, '2.000000');
+    assert.equal(await verifyBytes(changed, tampered.request.headers['x-circle-signature'], ctx.keys.publicPath), false);
+    assert.equal((await deliverTimes(tampered, ctx.origin, 1, 1000, 403)).exitCode, 0);
+  } finally { await ctx.close(); }
+});
+
+test('CLI Gateway profile and short event route through existing delivery engine', async () => {
+  const ctx = await harness();
+  const dir = await mkdtemp(join(tmpdir(), 'hb-gateway-cli-'));
+  try {
+    let result = await runCli(['init', 'arc-fintech', '--to', ctx.origin], dir);
+    assert.equal(result.code, 0, result.stderr);
+    result = await runCli(['events'], dir);
+    assert.match(result.stdout, /gateway.deposit.finalized/);
+    result = await runCli(['send', 'gateway.deposit.finalized', '--event-id', 'gw-event',
+      '--wallet-address', '0x' + '33'.repeat(20), '--domain', '26', '--amount', '5.01'], dir);
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, /HTTP 200/);
+    const config = await loadProject(dir);
+    assert.equal(config?.profile, 'arc-fintech');
+    assert.ok(config?.lastDelivery);
+    const stored = await loadDelivery(config!.lastDelivery!);
+    assert.equal(JSON.parse(stored.bytes.toString('utf8')).notification.id, 'gw-event');
+    result = await runCli(['replay', 'last', '--times', '2'], dir);
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(ctx.requests.length, 3);
+    for (const request of ctx.requests) assert.deepEqual(request.body, stored.bytes);
+  } finally { await ctx.close(); await rm(dir, { recursive: true, force: true }); }
+});

@@ -27,6 +27,19 @@ export function applyFault(original: SavedDelivery, fault: Fault): SavedDelivery
   }
 
   const rawBody = Buffer.from(original.request.bodyBase64, 'base64').toString('utf8');
+  // Gateway has no transaction.state; alter its amount after signing while keeping JSON valid.
+  if (rawBody.includes('"notificationType":"gateway.deposit.finalized"')) {
+    const data: unknown = JSON.parse(rawBody);
+    if (!data || typeof data !== 'object') throw new Error('Invalid Gateway body');
+    const event = (data as { notification?: { amount?: unknown } }).notification;
+    if (typeof event?.amount !== 'string') throw new Error('Missing Gateway amount');
+    const before = '"amount":' + JSON.stringify(event.amount);
+    const after = '"amount":' + JSON.stringify(event.amount === '1.000000' ? '2.000000' : '1.000000');
+    if (!rawBody.includes(before)) throw new Error('Missing Gateway amount field in signed bytes');
+    return { ...original, request: { ...original.request,
+      bodyBase64: Buffer.from(rawBody.replace(before, after), 'utf8').toString('base64'),
+    } };
+  }
   const currentState = rawBody.includes('"state":"COMPLETE"') ? 'COMPLETE' :
                        rawBody.includes('"state":"FAILED"') ? 'FAILED' : null;
   if (!currentState) throw new Error('Body fault requires a supported Circle Wallets state');

@@ -2,6 +2,9 @@
 
 ## Supported preview
 
+The published npm package remains v0.2.1. The v0.3 development branch adds `gateway.deposit.finalized` (synthetic Circle Gateway shape; local P-256 test key) and an `arc-fintech` endpoint preset. This is **not** yet an externally accepted Arc Fintech integration. See [Gateway development preview](gateway-preview.md).
+
+
 HookBuoy v0.2.1 is a local Node.js CLI for synthetic Circle Wallets-style notifications. It does not contact Circle or sign with a Circle key.
 
 | Fixture alias | Synthetic `notificationType` | Synthetic `notification.state` |
