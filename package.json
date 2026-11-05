@@ -1,6 +1,6 @@
 {
   "name": "hookbuoy",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local-first Circle Wallets webhook fixture signing and exact replay (experimental)",
   "type": "module",
   "bin": {

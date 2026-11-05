@@ -4,14 +4,14 @@ Local webhook signing and replay for payment integration tests.
 
 HookBuoy sends synthetic Circle Wallets and Gateway-shaped notifications to a local HTTP handler using a test key you control. Replay a saved delivery to test how your application handles duplicates and invalid signatures.
 
-**Status:** Experimental, v0.3.0. Supports synthetic Circle Wallets and Gateway notifications. HookBuoy is independent of Circle. Requests are signed with a local test key, not Circle's private key.
+**Status:** Experimental, v0.3.1. Supports synthetic Circle Wallets and Gateway notifications. HookBuoy is independent of Circle. Requests are signed with a local test key, not Circle's private key.
 
 ## Quickstart
 
 Requires Node.js 22+ and npm. Install HookBuoy:
 
 ```sh
-npm install --global hookbuoy@0.3.0
+npm install --global hookbuoy@0.3.1
 hookbuoy --version
 ```
 

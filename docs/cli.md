@@ -1,6 +1,6 @@
 # CLI guide
 
-This guide applies to HookBuoy v0.3.0 installed with npm. Run commands from the directory initialized by `hookbuoy init`. To use a source checkout instead, run `npm ci && npm run build` from the HookBuoy checkout. When running commands from a separate project directory, replace `hookbuoy` with `node /absolute/path/to/hookbuoy/dist/src/cli.js` (using the actual checkout path). The relative path `node dist/src/cli.js` only works when your current directory is the HookBuoy checkout.
+This guide applies to HookBuoy v0.3.1 installed with npm. Run commands from the directory initialized by `hookbuoy init`. To use a source checkout instead, run `npm ci && npm run build` from the HookBuoy checkout. When running commands from a separate project directory, replace `hookbuoy` with `node /absolute/path/to/hookbuoy/dist/src/cli.js` (using the actual checkout path). The relative path `node dist/src/cli.js` only works when your current directory is the HookBuoy checkout.
 
 ## Initialize
 
