@@ -381,6 +381,27 @@ test('menu accepts numbered choices and slash commands without shell evaluation'
   assert.equal(menuCommand(' '), null);
 });
 
+test('menu signature shortcut follows explicit Gateway context without changing other shortcuts', () => {
+  assert.deepEqual(menuCommand('3'), ['check', 'signature']);
+  assert.deepEqual(menuCommand('3', false), ['check', 'signature']);
+  assert.deepEqual(menuCommand('3', true), ['send', 'gateway.deposit.finalized', '--fault', 'signature']);
+  assert.deepEqual(menuCommand('1', true), ['send', 'inbound.complete']);
+  assert.deepEqual(menuCommand('8', true), ['send', 'gateway.deposit.finalized']);
+});
+
+test('interactive concise display preserves HTTP exit codes, exact replay and artifacts', async () => {
+  const ctx = await harness();
+  try {
+    const { body } = await makeFixture('gateway.deposit.finalized', { eventId: 'concise-gateway' });
+    const signed = await createDelivery(body, ctx.keys.privatePath, 'gateway.deposit.finalized');
+    const response = await deliverTimes(signed, ctx.origin, 2, 1000);
+    assert.equal(response.exitCode, 0);
+    assert.equal(ctx.requests.length, 2);
+    assert.deepEqual(ctx.requests[0]?.body, ctx.requests[1]?.body);
+    assert.equal(ctx.requests[0]?.signature, ctx.requests[1]?.signature);
+  } finally { await ctx.close(); }
+});
+
 test('CLI check signature and check body produce an expected HTTP 403', async () => {
   const ctx = await harness();
   const dir = await mkdtemp(join(tmpdir(), 'hb-fault-cli-'));
