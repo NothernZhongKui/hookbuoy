@@ -1,8 +1,8 @@
-# Gateway deposit notifications (v0.3.0)
+# Gateway deposit notifications
 
 HookBuoy supports a first **synthetic** Gateway fixture: `gateway.deposit.finalized`. The target consumer is the Circle [Arc Fintech sample](https://github.com/circlefin/arc-fintech), pinned for review at commit `0b10d386ce2a30e1a0572f28a5aad4aaf4fc66e6` (`master`, 2026-11-05).
 
-This is not a live Gateway notification or a guarantee of compatibility with every Circle subscription. The fixture is informed by Arc Fintech's `GatewayDepositNotification` type and its `app/api/circle/webhook/route.ts` handler. In particular, that handler uses `notification.id` to deduplicate, `txHash` to reconcile an existing local transaction, and `walletAddress` / `domain` to attribute otherwise unknown deposits.
+This is not a live Gateway notification or a guarantee of compatibility with every Circle subscription. The fixture is informed by Arc Fintech's `GatewayDepositNotification` type and its `app/api/circle/gateway-webhook/route.ts` handler. In particular, that handler uses `notification.id` to deduplicate, `txHash` to reconcile an existing local transaction, and `walletAddress` / `domain` to attribute otherwise unknown deposits.
 
 ## Commands
 
@@ -27,7 +27,7 @@ hookbuoy send gateway.deposit.finalized --fault signature --expect-status 403
 hookbuoy send gateway.deposit.finalized --fault body --expect-status 403
 ```
 
-`init arc-fintech` saves a **local endpoint preset**, generates a fresh local P-256 test keypair, and does nothing to Arc Fintech. It does not create a Gateway subscription or register any addresses. The unmodified Arc Fintech handler fetches Circle public keys and therefore does **not** trust `hookbuoy-local-test`. You must explicitly configure a local-only test public-key resolver while preserving signature verification. Never enable this local trust path outside an isolated development setup.
+`init arc-fintech` saves a **local endpoint preset**, creates a local P-256 test key pair or reuses an existing complete pair, and does nothing to Arc Fintech. It does not create a Gateway subscription or register any addresses. The unmodified Arc Fintech handler fetches Circle public keys and therefore does **not** trust `hookbuoy-local-test`. You must explicitly configure a local-only test public-key resolver while preserving signature verification. Never enable this local trust path outside an isolated development setup.
 
 ## Fixture semantics
 

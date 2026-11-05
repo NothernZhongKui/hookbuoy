@@ -9,7 +9,7 @@ Only a disposable **local Supabase instance** is used; no Circle credentials, re
 - Node.js 22+, npm, Git and Docker Desktop.
 - A clean, dedicated checkout of Arc Fintech **at exactly the pinned commit**, with its dependencies and local Supabase started.
 - Loopback port 3000 unused, and no other Supabase project running on this checkout's default local ports. Do **not** use shared or production databases.
-- A built HookBuoy checkout of v0.3 preview (`npm ci && npm run build`).
+- A built HookBuoy v0.3.1 checkout (`npm ci && npm run build`).
 
 On macOS, in a separate terminal:
 
@@ -24,8 +24,6 @@ npx --no-install supabase start
 Then from the HookBuoy checkout:
 
 ```sh
-git switch main
-git pull --ff-only origin main
 npm ci
 npm run build
 node scripts/arc-fintech-e2e.mjs ~/Projects/hookbuoy-arc-fintech-pilot arc-fintech-gateway-result.json
@@ -45,4 +43,4 @@ The script writes only nonsecret report data; do not publish logs that might con
 
 ## Known scope
 
-The fixture follows the pinned sample handler's fields. An HTTP 200 alone is not acceptance: unmatched synthetic hashes can be acknowledged without changing a transaction. This pilot checks the local app database, **not** Gateway balance reconciliation, Circle-origin authentication, on-chain finality or real USDC settlement. Unlike Arc Commerce's author-reported pilot, the Gateway E2E has no recorded successful run yet. Keep that distinction until a genuine runner invocation produces a PASS report.
+The fixture follows the pinned sample handler's fields. An HTTP 200 alone is not acceptance: unmatched synthetic hashes can be acknowledged without changing a transaction. This pilot checks the local app database, **not** Gateway balance reconciliation, Circle-origin authentication, on-chain finality or real USDC settlement. A v0.3 development revision passed this synthetic local test in GitHub Actions; see the [recorded run](pilots/arc-fintech-gateway-v0.3-actions.md). That run does not establish a new end-to-end result for v0.3.1.
