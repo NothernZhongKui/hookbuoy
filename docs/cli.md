@@ -59,4 +59,6 @@ Gateway uses `--event-id` for `notification.id` (rather than Wallets `--transact
 
 By default any 2xx is expected; `--expect-status N` requires one exact status. `--timeout-ms` defaults to 3000 and accepts 1–60000. `--times` defaults to 1 and accepts 1–100. Deliveries use HTTP on `localhost`, `127.0.0.1` or `[::1]`; redirects are not followed. An expected HTTP response does not establish correct payment processing.
 
+In an interactive terminal, HookBuoy shows a shorter delivery result (HTTP status, event ID and local save hint). Scripted commands retain their existing verbose output. The menu's **3 — Bad signature** item selects the Gateway fixture when the configured profile is `arc-fintech` or a custom endpoint uses the exact `/api/circle/gateway-webhook` path; otherwise it tests Wallets. **1 — Wallets COMPLETE** and **8 — Gateway deposit** remain explicit regardless of profile. The chosen destination is never silently changed. To inspect saved artifacts, use `hookbuoy status` or the `.hookbuoy/deliveries/` folder. All HTTP results are observations, not payment settlement assertions.
+
 Run `hookbuoy --help` for all options. With no arguments the CLI opens a numbered menu when both input and output are terminals; otherwise it prints help and exits. The menu is not a shell.
