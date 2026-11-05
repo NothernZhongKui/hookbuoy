@@ -424,7 +424,7 @@ test('installed-style CLI reports the released version without a project', async
     for (const flag of ['--version', '-V', 'version']) {
       const r = await runCli([flag], dir);
       assert.equal(r.code, 0, r.stderr);
-      assert.equal(r.stdout.trim(), '0.3.0-dev.1');
+      assert.equal(r.stdout.trim(), '0.3.0');
     }
     const invalid = await runCli(['--version', 'unexpected'], dir);
     assert.equal(invalid.code, 2);
