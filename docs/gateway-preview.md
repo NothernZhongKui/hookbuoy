@@ -55,4 +55,4 @@ A meaningful Arc Fintech pilot must run against a disposable local database and 
 4. Invalid signature and tampered body return 403, with no database changes.
 5. Non-matching synthetic hashes return only an HTTP observation and are **not** presented as successful settlement.
 
-The current preview contains local signed-delivery unit/integration tests only. The external Arc Fintech E2E pilot has **not yet been run**. No Circle API credentials, Gateway SDK, node RPC, transfers or actual USDC are necessary for local fixture testing.
+**External pilot completed (2026-11-05):** the pinned Arc Fintech handler passed a synthetic local Supabase E2E with HTTP 403 negative tests, a PENDING → COMPLETE Gateway deposit, one event and three idempotent replays. See [recorded Actions evidence](pilots/arc-fintech-gateway-v0.3-actions.md) and [reproduction guide](arc-fintech-e2e.md). This is not a real Circle-delivered notification or a settlement proof.
