@@ -2,16 +2,16 @@
 
 Local webhook signing and replay for payment integration tests.
 
-HookBuoy sends synthetic Circle Wallets-shaped notifications to a local HTTP handler using a test key you control. Replay a saved delivery to test how your application handles duplicates and invalid signatures.
+HookBuoy sends synthetic Circle Wallets and Gateway-shaped notifications to a local HTTP handler using a test key you control. Replay a saved delivery to test how your application handles duplicates and invalid signatures.
 
-**Status:** Published v0.2.1; v0.3 Gateway preview in development (not yet released to npm). HookBuoy is independent of Circle. Requests are signed with a local test key, not Circle's private key.
+**Status:** Experimental, v0.3.0. Supports synthetic Circle Wallets and Gateway notifications. HookBuoy is independent of Circle. Requests are signed with a local test key, not Circle's private key.
 
 ## Quickstart
 
 Requires Node.js 22+ and npm. Install HookBuoy:
 
 ```sh
-npm install --global hookbuoy@0.2.1
+npm install --global hookbuoy@0.3.0
 hookbuoy --version
 ```
 
@@ -44,15 +44,25 @@ The send and replays should return HTTP 200; the two negative checks should retu
 
 `init` saves the endpoint and creates test keys in `.hookbuoy/`, or reuses an existing complete key pair. Each configured `send` saves its request before delivery. `replay last` sends the most recently saved request, including a negative test if that was the last send. See the [CLI guide](docs/cli.md) for explicit files, endpoint overrides and exit codes.
 
+For a local Gateway demonstration in this same project directory, use the receiver above and run:
+
+```sh
+hookbuoy send gateway.deposit.finalized --to http://127.0.0.1:3917/api/circle/gateway-webhook
+hookbuoy replay last --times 3 --to http://127.0.0.1:3917/api/circle/gateway-webhook
+hookbuoy send gateway.deposit.finalized --to http://127.0.0.1:3917/api/circle/gateway-webhook --fault signature
+```
+
+The included receiver accepts both local paths and deduplicates Gateway notifications by `notification.id`. It is for exploring CLI behavior, not a claim about production Circle delivery.
+
 ## Use your handler
 
 Configure your local handler to trust `.hookbuoy/public.pem` for key ID `hookbuoy-local-test` **only in an isolated development environment**. Keep signature verification enabled and verify the original body bytes. The normal Circle key lookup does not trust this local key.
 
 Point `init --to` or `send --to` at your handler. HookBuoy accepts HTTP loopback addresses only. It signs synthetic fixtures; it does not create payments or fetch Circle keys. To test a matching transaction, provide its existing local test hash with `--tx-hash` and inspect the application's state afterwards.
 
-The published v0.2.1 fixtures are `inbound.complete` and `inbound.failed`; the original `wallets.inbound.*` aliases also work. The v0.3 development branch adds a synthetic `gateway.deposit.finalized` fixture and an `arc-fintech` local endpoint preset. These are not available in the current npm release. See [compatibility](docs/compatibility.md) for fixture shape and trust limits.
+The supported fixtures are `inbound.complete`, `inbound.failed` (also `wallets.inbound.*`) and `gateway.deposit.finalized`. Use `hookbuoy events` to see them. `init arc-fintech` presets the dedicated local Gateway route; its local test keys must be explicitly trusted by the receiver in an isolated test setup. See [compatibility](docs/compatibility.md) for fixture shape and trust limits.
 
-A successful HTTP response does not prove that a payment was matched, credited once or settled on-chain. The [Arc Commerce guide](docs/arc-commerce-e2e.md) describes a reproducible local integration; the [pilot result](docs/pilots/arc-commerce-v0.2-local.md) records an author-reported run.
+A successful HTTP response does not prove that a payment was matched, credited once or settled on-chain. The [Arc Commerce guide](docs/arc-commerce-e2e.md) describes a reproducible local integration; its [pilot result](docs/pilots/arc-commerce-v0.2-local.md) records an author-reported run. The [Gateway pilot](docs/pilots/arc-fintech-gateway-v0.3-actions.md) passed an independent GitHub Actions E2E against the pinned Arc Fintech handler and local Supabase.
 
 ## Development
 
