@@ -374,6 +374,8 @@ test('body fault keeps valid JSON, original signature, and produces HTTP 403', a
 test('menu accepts numbered choices and slash commands without shell evaluation', () => {
   assert.deepEqual(menuCommand('1'), ['send','inbound.complete']);
   assert.deepEqual(menuCommand('2'), ['replay','last']);
+  assert.deepEqual(menuCommand('2', true, 403), ['replay', 'last', '--expect-status', '403']);
+  assert.deepEqual(menuCommand('2', false, 409), ['replay', 'last', '--expect-status', '409']);
   assert.deepEqual(menuCommand('3'), ['check','signature']);
   assert.deepEqual(menuCommand('/events'), ['events']);
   assert.deepEqual(menuCommand('6'), ['init']);
