@@ -11,7 +11,7 @@ import { ensureDeliveryDir, initProject, keyStatus, loadProject, nextDelivery, r
 import { FIXTURE_NAMES } from './constants.js';
 import { applyFault, parseFault } from './faults.js';
 
-const VERSION = '0.3.0';
+const VERSION = '0.3.1';
 
 const USAGE = `HookBuoy v${VERSION} — local test webhooks (NOT Circle-signed)
 
