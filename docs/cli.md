@@ -1,6 +1,6 @@
 # CLI guide
 
-This guide applies to HookBuoy v0.2.1 installed with npm. Run commands from the directory initialized by `hookbuoy init`. To use a source checkout instead, run `npm ci && npm run build` from the HookBuoy checkout. When running commands from a separate project directory, replace `hookbuoy` with `node /absolute/path/to/hookbuoy/dist/src/cli.js` (using the actual checkout path). The relative path `node dist/src/cli.js` only works when your current directory is the HookBuoy checkout.
+This guide applies to HookBuoy v0.3.0 installed with npm. Run commands from the directory initialized by `hookbuoy init`. To use a source checkout instead, run `npm ci && npm run build` from the HookBuoy checkout. When running commands from a separate project directory, replace `hookbuoy` with `node /absolute/path/to/hookbuoy/dist/src/cli.js` (using the actual checkout path). The relative path `node dist/src/cli.js` only works when your current directory is the HookBuoy checkout.
 
 ## Initialize
 
@@ -10,7 +10,7 @@ hookbuoy status
 hookbuoy events
 ```
 
-`init` writes `.hookbuoy/config.json` and creates a local P-256 test key pair, or reuses an existing complete pair. It refuses an existing configuration or an incomplete pair; it does not establish that existing keys match. `init arc-commerce` selects `http://127.0.0.1:3000/api/circle/webhook`; it does not start or configure that application.
+`init` writes `.hookbuoy/config.json` and creates a local P-256 test key pair, or reuses an existing complete pair. It refuses an existing configuration or an incomplete pair; it does not establish that existing keys match. `init arc-commerce` selects `http://127.0.0.1:3000/api/circle/webhook`; `init arc-fintech` selects `http://127.0.0.1:3000/api/circle/gateway-webhook`. Neither starts or configures the external application.
 
 Use `keygen --out DIR` for a standalone pair. The default signing key is `.hookbuoy/private.pem`; use `--key FILE` on `send` to select another.
 
@@ -34,9 +34,19 @@ hookbuoy check signature
 hookbuoy check body
 ```
 
-These send intentionally invalid signatures. The first changes the signature; the second changes the signed body while retaining its signature. Both expect HTTP 403 by default; pass `--expect-status N` if your receiver uses another status. The equivalent `send inbound.complete --fault signature|body` accepts the normal send options.
+These send intentionally invalid signatures. The first changes the signature; the second changes the signed body while retaining its signature. Both expect HTTP 403 by default; pass `--expect-status N` if your receiver uses another status. The equivalent `send inbound.complete --fault signature|body` accepts the normal send options. The `check` shortcuts always use the Wallets event, even if the configured profile is `arc-fintech`; test Gateway faults with `send gateway.deposit.finalized --fault signature|body`.
 
 In an initialized project, these checks also save their faulted delivery and update `last`. To replay a previous valid request afterwards, use its explicit path. Replay defaults to expecting any 2xx, so pass `--expect-status 403` when intentionally replaying a saved invalid request.
+
+## Circle Gateway
+
+```sh
+hookbuoy init arc-fintech
+hookbuoy send gateway.deposit.finalized --tx-hash 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef --wallet-address 0x1111111111111111111111111111111111111111 --domain 26 --amount 1.25
+hookbuoy replay last --times 3
+```
+
+Gateway uses `--event-id` for `notification.id` (rather than Wallets `--transaction-id`), and supports `--wallet-address`, `--domain`, `--amount`. Existing local test hashes/addresses are needed for application-side reconciliation. The included demo receiver works on `http://127.0.0.1:3917/api/circle/gateway-webhook`. See [Gateway guide](gateway-preview.md).
 
 ## Results and limits
 
