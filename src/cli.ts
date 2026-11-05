@@ -11,7 +11,7 @@ import { ensureDeliveryDir, initProject, keyStatus, loadProject, nextDelivery, r
 import { FIXTURE_NAMES } from './constants.js';
 import { applyFault, parseFault } from './faults.js';
 
-const VERSION = '0.3.0-dev.1';
+const VERSION = '0.3.0';
 
 const USAGE = `HookBuoy v${VERSION} — local test webhooks (NOT Circle-signed)
 
@@ -25,8 +25,8 @@ Usage:
   hookbuoy send inbound.complete          Send with configured endpoint and auto-save
   hookbuoy send gateway.deposit.finalized  Synthetic Gateway deposit notification
   hookbuoy replay last --times 3          Replay last stored request exactly
-  hookbuoy check signature               Expect a rejected bad signature (HTTP 403)
-  hookbuoy check body                    Expect a rejected modified signed body
+  hookbuoy check signature               Wallets invalid-signature check (HTTP 403)
+  hookbuoy check body                    Wallets tampered-body check (HTTP 403)
   hookbuoy keygen --out .hookbuoy         Create local P-256 test keys
   hookbuoy --version                      Show installed CLI version
 
@@ -36,6 +36,7 @@ Short aliases:  inbound.complete | inbound.failed
 Send: --to URL --key FILE --tx-hash 0x... --transaction-id ID
       --notification-id ID --save FILE --fault signature|body
 Gateway: --event-id ID --wallet-address 0x... --domain ID --amount N
+Gateway faults: send gateway.deposit.finalized --fault signature|body
 Replay: --to URL --times N (1..100)
 Shared: --timeout-ms N (1..60000) --expect-status N
 Faults default to expected HTTP 403; override with --expect-status for other handlers.
@@ -117,14 +118,15 @@ async function interactive(): Promise<number> {
       const project = await loadProject();
       console.log('  ' + (project ? project.profile + '  |  ' + project.endpoint : 'Not configured • choose 6 to initialize'));
       console.log('  ─────────────────────────────────────────────');
-      console.log('  1  Send COMPLETE webhook');
+      console.log('  1  Send Wallets COMPLETE');
       console.log('  2  Replay last delivery');
       console.log('  3  Test invalid signature (expect 403)');
       console.log('  4  Browse events');
       console.log('  5  Project status');
       console.log('  6  Initialize project');
-      console.log('  7  Help                  0  Exit');
+      console.log('  7  Help');
       console.log('  8  Send Gateway deposit');
+      console.log('  0  Exit');
       const line = (await rl.question('\n  › ')).trim();
       const chosen = menuCommand(line);
       if (chosen === 'quit') return 0;
@@ -178,7 +180,7 @@ export async function run(argv: string[]): Promise<number> {
       for (const name of FIXTURE_NAMES) console.log(name.startsWith('wallets.')
         ? '  ' + name.replace('wallets.', '') + '  (' + name + ')'
         : '  ' + name + '  (Gateway V2)');
-      console.log('Use with: hookbuoy send inbound.complete');
+      console.log('Use with: hookbuoy send inbound.complete | hookbuoy send gateway.deposit.finalized');
       return 0;
     }
     if (cmd === 'status') {
