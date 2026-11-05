@@ -130,12 +130,10 @@ async function interactive(): Promise<number> {
       const gatewayTarget = gatewayMenuTarget(project);
       console.log('  ─────────────────────────────────────────────');
       console.log('  1  Wallets COMPLETE      8  Gateway deposit');
-      console.log('  2  Replay last           3  ' + (gatewayTarget ? 'Gateway' : 'Wallets') + ' bad signature');
+      console.log('  2  Replay last' + (project?.lastExpectedStatus !== undefined ? ' (HTTP ' + project.lastExpectedStatus + ')' : '') + '    3  ' + (gatewayTarget ? 'Gateway' : 'Wallets') + ' bad signature');
       console.log('  4  Events                5  Status');
       console.log('  6  ' + (project ? 'Already configured' : 'Initialize') + '    7  Help');
       console.log('  0  Exit');
-      if (project?.lastDelivery && project.lastExpectedStatus !== undefined)
-        console.log('  Last delivery expects HTTP ' + project.lastExpectedStatus);
       const line = (await rl.question('\n  › ')).trim();
       const chosen = menuCommand(line, gatewayTarget, project?.lastExpectedStatus);
       if (chosen === 'quit') return 0;
