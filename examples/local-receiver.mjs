@@ -13,7 +13,7 @@ const publicPem = await readFile(process.argv[2]);
 const seenNotifications = new Set();
 const server = createServer(async (req, res) => {
   const respond = (status, obj) => res.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(obj));
-  if (req.method !== 'POST' || req.url !== '/api/circle/webhook') return respond(404, { error: 'Not found' });
+  if (req.method !== 'POST' || !['/api/circle/webhook', '/api/circle/gateway-webhook'].includes(req.url)) return respond(404, { error: 'Not found' });
   const parts = [];
   for await (const part of req) parts.push(part);
   const bytes = Buffer.concat(parts);
@@ -24,9 +24,10 @@ const server = createServer(async (req, res) => {
   let event;
   try { event = JSON.parse(bytes.toString('utf8')); } catch { return respond(400, { error: 'Invalid JSON' }); }
   if (!event.notificationId || !event.notification?.id) return respond(422, { error: 'Missing event fields' });
-  const duplicate = seenNotifications.has(event.notificationId);
-  seenNotifications.add(event.notificationId);
-  console.log(event.notificationType, event.notification.id, event.notification.state, duplicate ? 'DUPLICATE' : 'NEW');
+  const key = event.notificationType === 'gateway.deposit.finalized' ? event.notification.id : event.notificationId;
+  const duplicate = seenNotifications.has(key);
+  seenNotifications.add(key);
+  console.log(event.notificationType, event.notification.id, event.notification.state ?? '-', duplicate ? 'DUPLICATE' : 'NEW');
   return respond(200, { received: true, duplicate });
 });
-server.listen(3917, '127.0.0.1', () => console.log('HookBuoy DEV-only receiver on http://127.0.0.1:3917/api/circle/webhook'));
+server.listen(3917, '127.0.0.1', () => console.log('HookBuoy DEV-only receiver on http://127.0.0.1:3917/api/circle/webhook and /api/circle/gateway-webhook'));

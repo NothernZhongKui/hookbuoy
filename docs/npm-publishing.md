@@ -1,6 +1,6 @@
 # npm publication and trusted publishing
 
-HookBuoy v0.2.0 was initially published manually. The v0.2.1 [OIDC publication run](https://github.com/NothernZhongKui/hookbuoy/actions/runs/41928238170) reported success and a signed provenance statement. The maintainer subsequently confirmed the npm package. See the [README](../README.md) for installation.
+HookBuoy v0.2.0 was initially published manually. The v0.2.1 [OIDC publication run](https://github.com/NothernZhongKui/hookbuoy/actions/runs/41928238170) reported success and a signed provenance statement. The maintainer subsequently confirmed the npm package. Version v0.3.0 extends the CLI with synthetic Gateway deposit notifications, backed by an external Arc Fintech local E2E. See the [README](../README.md) for installation.
 
 ## Bootstrap status (completed)
 

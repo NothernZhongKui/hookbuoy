@@ -1,4 +1,4 @@
-# Gateway deposit notifications (v0.3 development preview)
+# Gateway deposit notifications (v0.3.0)
 
 HookBuoy supports a first **synthetic** Gateway fixture: `gateway.deposit.finalized`. The target consumer is the Circle [Arc Fintech sample](https://github.com/circlefin/arc-fintech), pinned for review at commit `0b10d386ce2a30e1a0572f28a5aad4aaf4fc66e6` (`master`, 2026-11-05).
 
