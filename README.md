@@ -42,7 +42,7 @@ hookbuoy check body
 
 The send and replays should return HTTP 200; the two negative checks should return HTTP 403. The receiver logs one `NEW` and three `DUPLICATE` events. It is an in-memory demonstration, not a payment handler.
 
-`init` saves the endpoint and creates test keys in `.hookbuoy/`, or reuses an existing complete key pair. Each configured `send` saves its request before delivery. `replay last` sends the most recently saved request, including a negative test if that was the last send. See the [CLI guide](docs/cli.md) for explicit files, endpoint overrides and exit codes.
+`init` saves the endpoint and creates test keys in `.hookbuoy/`, or reuses an existing complete key pair. Each configured `send` saves its request before delivery. `replay last` sends the most recently saved request, including a negative test if that was the last send. The CLI expects a 2xx response by default; to replay a saved negative test, use `--expect-status 403`. Interactive menu option `2` instead uses the last saved expected status. See the [CLI guide](docs/cli.md) for details.
 
 For a local Gateway demonstration in this same project directory, use the receiver above and run:
 
@@ -62,7 +62,7 @@ Point `init --to` or `send --to` at your handler. HookBuoy accepts HTTP loopback
 
 The supported fixtures are `inbound.complete`, `inbound.failed` (also `wallets.inbound.*`) and `gateway.deposit.finalized`. Use `hookbuoy events` to see them. `init arc-fintech` presets the dedicated local Gateway route; its local test keys must be explicitly trusted by the receiver in an isolated test setup. See [compatibility](docs/compatibility.md) for fixture shape and trust limits.
 
-A successful HTTP response does not prove that a payment was matched, credited once or settled on-chain. The [Arc Commerce guide](docs/arc-commerce-e2e.md) describes a reproducible local integration; its [pilot result](docs/pilots/arc-commerce-v0.2-local.md) records an author-reported run. The [Gateway pilot](docs/pilots/arc-fintech-gateway-v0.3-actions.md) passed an independent GitHub Actions E2E against the pinned Arc Fintech handler and local Supabase.
+A successful HTTP response does not prove that a payment was matched, credited once or settled on-chain. The [Arc Commerce guide](docs/arc-commerce-e2e.md) describes a reproducible local integration; its [pilot result](docs/pilots/arc-commerce-v0.2-local.md) records an author-reported run. The [Gateway pilot](docs/pilots/arc-fintech-gateway-v0.3-actions.md) passed an automated GitHub Actions E2E against the pinned Arc Fintech handler and local Supabase.
 
 ## Development
 
@@ -78,3 +78,5 @@ npm test
 Keep the private key and saved deliveries out of version control. Never enable local test-key trust in production. HookBuoy cannot authenticate Circle notifications, send to remote endpoints, simulate a provider's retry schedule or guarantee business outcomes.
 
 [CLI guide](docs/cli.md) · [Compatibility](docs/compatibility.md) · [Gateway preview](docs/gateway-preview.md) · [Arc Commerce](docs/arc-commerce-e2e.md) · [MIT license](LICENSE)
+
+Feedback, bug reports, and ideas are welcome — reach out on X: [@AdvanZeroX](https://x.com/AdvanZeroX).
