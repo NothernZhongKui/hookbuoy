@@ -53,7 +53,7 @@ try {
   assert.match(help, /Usage:/);
   assert.match(help, /hookbuoy replay/);
   const version = await run(cli, ['--version'], { cwd: dir });
-  assert.equal(version.trim(), '0.2.1');
+  assert.equal(version.trim(), '0.3.0-dev.1');
 
   // Verify the shipped v0.2 initialization and aliases, not only the v0.1 legacy commands.
   const events = await run(cli, ['events'], { cwd: dir });

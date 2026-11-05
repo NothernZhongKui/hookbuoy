@@ -5,7 +5,7 @@ import { createTestKeys } from './keys.js';
 import { parseLocalUrl } from './delivery.js';
 
 const FORMAT = 'hookbuoy.project.v1' as const;
-export type Profile = 'custom' | 'arc-commerce';
+export type Profile = 'custom' | 'arc-commerce' | 'arc-fintech';
 export type ProjectConfig = {
   format: typeof FORMAT;
   endpoint: string;
@@ -39,7 +39,7 @@ export async function loadProject(cwd = process.cwd()): Promise<ProjectConfig | 
   if (!value || typeof value !== 'object') throw new Error('Invalid project configuration');
   const data = value as Record<string, unknown>;
   if (data.format !== FORMAT ||
-      (data.profile !== 'custom' && data.profile !== 'arc-commerce') ||
+      (data.profile !== 'custom' && data.profile !== 'arc-commerce' && data.profile !== 'arc-fintech') ||
       typeof data.endpoint !== 'string' ||
       (data.lastDelivery !== undefined && typeof data.lastDelivery !== 'string')) {
     throw new Error('Invalid or unsupported project configuration');

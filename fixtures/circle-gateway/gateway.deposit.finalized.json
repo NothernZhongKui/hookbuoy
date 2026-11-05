@@ -1,0 +1,15 @@
+{
+  "subscriptionId": "hookbuoy-local-gateway-subscription",
+  "notificationId": "placeholder-notification-id",
+  "notificationType": "gateway.deposit.finalized",
+  "notification": {
+    "id": "placeholder-gateway-event-id",
+    "walletAddress": "0x1111111111111111111111111111111111111111",
+    "domain": "26",
+    "amount": "1.000000",
+    "from": "0x1111111111111111111111111111111111111111",
+    "txHash": "0xabababababababababababababababababababababababababababababababab"
+  },
+  "timestamp": "2026-11-05T00:00:00.000Z",
+  "version": 2
+}

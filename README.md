@@ -4,7 +4,7 @@ Local webhook signing and replay for payment integration tests.
 
 HookBuoy sends synthetic Circle Wallets-shaped notifications to a local HTTP handler using a test key you control. Replay a saved delivery to test how your application handles duplicates and invalid signatures.
 
-**Status:** Experimental, v0.2.1. HookBuoy is independent of Circle. Requests are signed with a local test key, not Circle's private key.
+**Status:** Published v0.2.1; v0.3 Gateway preview in development (not yet released to npm). HookBuoy is independent of Circle. Requests are signed with a local test key, not Circle's private key.
 
 ## Quickstart
 
@@ -50,7 +50,7 @@ Configure your local handler to trust `.hookbuoy/public.pem` for key ID `hookbuo
 
 Point `init --to` or `send --to` at your handler. HookBuoy accepts HTTP loopback addresses only. It signs synthetic fixtures; it does not create payments or fetch Circle keys. To test a matching transaction, provide its existing local test hash with `--tx-hash` and inspect the application's state afterwards.
 
-The available fixtures are `inbound.complete` and `inbound.failed`; the original `wallets.inbound.*` aliases also work. See [compatibility](docs/compatibility.md) for fixture shape and trust limits.
+The published v0.2.1 fixtures are `inbound.complete` and `inbound.failed`; the original `wallets.inbound.*` aliases also work. The v0.3 development branch adds a synthetic `gateway.deposit.finalized` fixture and an `arc-fintech` local endpoint preset. These are not available in the current npm release. See [compatibility](docs/compatibility.md) for fixture shape and trust limits.
 
 A successful HTTP response does not prove that a payment was matched, credited once or settled on-chain. The [Arc Commerce guide](docs/arc-commerce-e2e.md) describes a reproducible local integration; the [pilot result](docs/pilots/arc-commerce-v0.2-local.md) records an author-reported run.
 
@@ -67,4 +67,4 @@ npm test
 
 Keep the private key and saved deliveries out of version control. Never enable local test-key trust in production. HookBuoy cannot authenticate Circle notifications, send to remote endpoints, simulate a provider's retry schedule or guarantee business outcomes.
 
-[CLI guide](docs/cli.md) · [Compatibility](docs/compatibility.md) · [Arc Commerce](docs/arc-commerce-e2e.md) · [MIT license](LICENSE)
+[CLI guide](docs/cli.md) · [Compatibility](docs/compatibility.md) · [Gateway preview](docs/gateway-preview.md) · [Arc Commerce](docs/arc-commerce-e2e.md) · [MIT license](LICENSE)
