@@ -432,7 +432,7 @@ test('saved negative-delivery expected status survives CLI restart and clears af
     assert.equal(r.code, 0, r.stderr);
     assert.match(r.stdout, /HTTP 403/);
 
-    r = await runCli(['send', 'gateway.deposit.finalized'], dir);
+    r = await runCli(['send', 'gateway.deposit.finalized', '--key', ctx.keys.privatePath], dir);
     assert.equal(r.code, 0, r.stderr);
     const positive = await loadProject(dir);
     assert.equal(positive?.lastExpectedStatus, undefined);
