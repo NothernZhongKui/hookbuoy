@@ -94,13 +94,13 @@ function fixtureAlias(name: string): (typeof FIXTURE_NAMES)[number] | undefined 
 }
 
 // The menu can adapt its negative test to a known Gateway endpoint.
-export function menuCommand(line: string, gatewayTarget = false): string[] | 'quit' | null {
+export function menuCommand(line: string, gatewayTarget = false, lastExpectedStatus?: number): string[] | 'quit' | null {
   const text = line.trim();
   if (!text) return null;
   if (text === '0' || text === '/quit' || text === '/exit' || text === 'quit' || text === 'exit') return 'quit';
   const shortcuts: Record<string, string[]> = {
     '1': ['send', 'inbound.complete'],
-    '2': ['replay', 'last'],
+    '2': lastExpectedStatus === undefined ? ['replay', 'last'] : ['replay', 'last', '--expect-status', String(lastExpectedStatus)],
     '3': gatewayTarget ? ['send', 'gateway.deposit.finalized', '--fault', 'signature'] : ['check', 'signature'],
     '4': ['events'],
     '5': ['status'],
@@ -137,7 +137,7 @@ async function interactive(): Promise<number> {
       if (project?.lastDelivery && project.lastExpectedStatus !== undefined)
         console.log('  Last delivery expects HTTP ' + project.lastExpectedStatus);
       const line = (await rl.question('\n  › ')).trim();
-      const chosen = menuCommand(line, gatewayTarget);
+      const chosen = menuCommand(line, gatewayTarget, project?.lastExpectedStatus);
       if (chosen === 'quit') return 0;
       if (!chosen) continue;
       const parts = [...chosen];
@@ -146,8 +146,6 @@ async function interactive(): Promise<number> {
         parts.push(answer === 'failed' ? 'inbound.failed' : 'inbound.complete');
       }
       if (parts[0] === 'replay' && parts.length === 1) parts.push('last');
-      if (line === '2' && project?.lastExpectedStatus !== undefined)
-        parts.push('--expect-status', String(project.lastExpectedStatus));
       if (parts[0] === 'init' && parts.length === 1) {
         if (project) { console.log('  Already configured. Choose 5 for project status.'); continue; }
         const profile = (await rl.question('  Profile [custom/arc-commerce/arc-fintech] (arc-commerce): ')).trim();
